@@ -1,13 +1,14 @@
 // motor-k6-nuevo.js
-// MOTOR K6 — proyección de ponches del abridor, piso 6.0 IP.
+// MOTOR K6 — proyección de ponches del abridor, escalado a 6.0 IP.
 //
-// REGLA DE ORO DE ESTE MOTOR (confirmada en conversación, NO se cambia sin avisar):
-//   - K6 = ponches reales de un pitcher en salidas donde inningsPitched >= 6.0 EXACTO.
+// REGLA DE ORO DE ESTE MOTOR (corregida y confirmada en conversación):
+//   - K6 = (Ponches del start × 6) / IP real del start. Se calcula POR CADA start
+//     reciente y luego se promedian los resultados ya escalados.
+//   - NO se filtra por un mínimo de IP. Un start de 5.1 IP con 8 K SÍ cuenta,
+//     escalado: 8*6/5.333 = 9.0.
 //   - NO se redondea inningsPitched. .1 = 1/3 (0.333...), .2 = 2/3 (0.666...).
-//   - NO se escala con la fórmula K*6/IP. Si tiró 7.2 IP con 10 K, esos 10 K cuentan
-//     completos — escalarlo hacia abajo sería inventar un número que no pasó.
-//   - Si un pitcher no tiene NINGÚN start calificado (>=6.0 IP) en la ventana, el
-//     resultado es NO_CONFIRMADO. No se rellena con starts cortos.
+//   - Si un pitcher no tiene NINGÚN start con datos válidos (IP y K numéricos)
+//     en la ventana, el resultado es NO_CONFIRMADO. No se inventa.
 //
 // FORMULA (definida por el usuario):
 //   K6 = BASE_K_SKILL × EXPECTED_VOLUME × ARSENAL × LINEUP × UMPIRE × CATCHER × PARK × CLIMA
@@ -53,55 +54,65 @@ function ipRealDesdeBeisbol(ipString) {
 
 // ============================================================
 // CAPA 1 + 2: BASE_K_SKILL + EXPECTED_VOLUME
-// Fuente: jalar-ultimos5.js (ya existe en el repo), FILTRADO a >=6.0 IP real.
-// Ambas capas comparten el mismo filtro — así el motor no se contradice.
+// Fuente: jalar-ultimos5.js (ya existe en el repo).
+// FORMULA: por cada start con datos válidos, K6_start = (K del start × 6) / IP_real.
+// Se promedian esos K6_start ya escalados. NO se filtra por un piso de IP.
 // ============================================================
 function calcularBaseYVolumen(juegos) {
   // juegos = array de salidas del pitcher: [{innings_pitched, strikeouts, pitches}, ...]
   // (formato que ya devuelve jalar-ultimos5.js en salida.juegos)
 
-  const calificados = juegos.filter(function(j) {
+  const valuos = juegos.filter(function(j) {
     const ipReal = ipRealDesdeBeisbol(j.innings_pitched);
-    return ipReal !== null && ipReal >= 6.0;
+    const k = Number(j.strikeouts);
+    return ipReal !== null && ipReal > 0 && !isNaN(k);
   });
 
-  if (calificados.length === 0) {
+  if (valuos.length === 0) {
     return {
       base_k_skill: null,
       expected_volume_ip: null,
       pitches_promedio: null,
       pitches_por_k: null,
-      n_starts_calificados: 0,
+      n_starts_usados: 0,
       status: "NO_CONFIRMADO",
-      motivo: "SIN_STARTS_CON_6.0_IP_O_MAS_EN_LA_VENTANA"
+      motivo: "SIN_STARTS_CON_DATOS_VALIDOS_DE_IP_Y_K"
     };
   }
 
-  let sumaK = 0, sumaIP = 0, sumaPitches = 0, nPitches = 0;
-  calificados.forEach(function(j) {
-    sumaK += Number(j.strikeouts) || 0;
-    sumaIP += ipRealDesdeBeisbol(j.innings_pitched);
+  let sumaK6Escalado = 0;
+  let sumaIP = 0, sumaPitches = 0, nPitches = 0;
+  let sumaKreal = 0;
+
+  valuos.forEach(function(j) {
+    const ipReal = ipRealDesdeBeisbol(j.innings_pitched);
+    const k = Number(j.strikeouts);
+    const k6Start = (k * 6) / ipReal; // formula de escala por start
+    sumaK6Escalado += k6Start;
+    sumaIP += ipReal;
+    sumaKreal += k;
     if (j.pitches !== null && j.pitches !== undefined && !isNaN(j.pitches)) {
       sumaPitches += Number(j.pitches);
       nPitches++;
     }
   });
 
-  const kPromedio = sumaK / calificados.length;
-  const ipPromedio = sumaIP / calificados.length;
+  const k6Promedio = sumaK6Escalado / valuos.length;
+  const ipPromedio = sumaIP / valuos.length;
   const pitchesPromedio = nPitches > 0 ? sumaPitches / nPitches : null;
-  const pitchesPorK = (pitchesPromedio !== null && kPromedio > 0)
-    ? pitchesPromedio / kPromedio
+  // pitches por K calculado sobre los totales reales (no escalados), para que sea representativo
+  const pitchesPorK = (pitchesPromedio !== null && sumaKreal > 0)
+    ? sumaPitches / sumaKreal
     : null;
 
   return {
-    base_k_skill: Math.round(kPromedio * 100) / 100,       // K reales promedio en starts >=6.0
-    expected_volume_ip: Math.round(ipPromedio * 100) / 100, // IP real promedio en esos starts
+    base_k_skill: Math.round(k6Promedio * 100) / 100,        // K6 promedio YA escalado por start
+    expected_volume_ip: Math.round(ipPromedio * 100) / 100,   // IP real promedio de los starts usados
     pitches_promedio: pitchesPromedio !== null ? Math.round(pitchesPromedio * 10) / 10 : null,
     pitches_por_k: pitchesPorK !== null ? Math.round(pitchesPorK * 100) / 100 : null,
-    n_starts_calificados: calificados.length,
-    status: calificados.length < 3 ? "MUESTRA_PEQUENA" : "OK",
-    motivo: calificados.length < 3 ? "MENOS_DE_3_STARTS_CALIFICADOS_LEER_CON_CAUTELA" : null
+    n_starts_usados: valuos.length,
+    status: valuos.length < 3 ? "MUESTRA_PEQUENA" : "OK",
+    motivo: valuos.length < 3 ? "MENOS_DE_3_STARTS_CON_DATOS_LEER_CON_CAUTELA" : null
   };
 }
 
@@ -322,7 +333,7 @@ function calcularK6(input) {
   return {
     k6_proyectado: Math.round(k6Proyectado * 100) / 100,
     base_k_real: baseVolumen.base_k_skill,
-    n_starts_usados: baseVolumen.n_starts_calificados,
+    n_starts_usados: baseVolumen.n_starts_usados,
     muestra_status: baseVolumen.status, // "OK" o "MUESTRA_PEQUENA"
     capas_sin_confirmar: capasSinConfirmar,
     capas: {
