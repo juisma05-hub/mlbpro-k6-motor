@@ -137,32 +137,58 @@
         var home = (g.teams && g.teams.home && g.teams.home.team) ? g.teams.home.team.name : "?";
         var pAwayId = (g.teams && g.teams.away && g.teams.away.probablePitcher) ? g.teams.away.probablePitcher.id : null;
         var pAwayName = (g.teams && g.teams.away && g.teams.away.probablePitcher) ? g.teams.away.probablePitcher.fullName : "TBD";
+        var pHomeId = (g.teams && g.teams.home && g.teams.home.probablePitcher) ? g.teams.home.probablePitcher.id : null;
+        var pHomeName = (g.teams && g.teams.home && g.teams.home.probablePitcher) ? g.teams.home.probablePitcher.fullName : "TBD";
 
-        var lineaObj = lineasCache ? lineaPonchesBuscarPitcher(pAwayName) : null;
-        var lineaMercadoVal = (lineaObj && lineaObj.total_k !== null && lineaObj.total_k !== undefined) ? lineaObj.total_k : null;
+        // --- Pitcher visitante (away) enfrenta al lineup de casa (home) ---
+        var lineaObjAway = lineasCache ? lineaPonchesBuscarPitcher(pAwayName) : null;
+        var lineaMercadoAway = (lineaObjAway && lineaObjAway.total_k !== null && lineaObjAway.total_k !== undefined) ? lineaObjAway.total_k : null;
 
         if (!pAwayId) {
-          html += tarjetaK6Nuevo(away+" @ "+home, venue, "TBD", {k6_proyectado:null, motivo:"SIN_PITCHER_PROBABLE"}, lineaMercadoVal);
-          continue;
+          html += tarjetaK6Nuevo(away+" @ "+home, venue, "TBD ("+away+")", {k6_proyectado:null, motivo:"SIN_PITCHER_PROBABLE"}, lineaMercadoAway);
+        } else {
+          log("Procesando " + pAwayName + "...");
+          var u5Away = await jalarUltimos5(pAwayId, new Date().getFullYear());
+          var resultadoAway = calcularK6({
+            playerId: pAwayId,
+            juegosRecientes: u5Away.juegos || [],
+            arsenalMaster: (typeof ARSENAL_MASTER_2026 !== "undefined") ? ARSENAL_MASTER_2026 : {},
+            nombreEquipoRival: home,
+            nombreUmpireNormalizado: null,
+            umpiresMaster: (typeof UMPIRES_MASTER_2026 !== "undefined") ? UMPIRES_MASTER_2026 : {},
+            nombreCatcher: null,
+            catcherData: null,
+            nombreVenue: venue,
+            parkFactors: (typeof PARK_FACTORS_2026 !== "undefined") ? PARK_FACTORS_2026 : {},
+            climaData: null
+          });
+          html += tarjetaK6Nuevo(away+" @ "+home, venue, pAwayName+" ("+away+")", resultadoAway, lineaMercadoAway);
         }
 
-        log("Procesando " + pAwayName + "...");
-        var u5 = await jalarUltimos5(pAwayId, new Date().getFullYear());
-        var resultado = calcularK6({
-          playerId: pAwayId,
-          juegosRecientes: u5.juegos || [],
-          arsenalMaster: (typeof ARSENAL_MASTER_2026 !== "undefined") ? ARSENAL_MASTER_2026 : {},
-          nombreEquipoRival: home,
-          nombreUmpireNormalizado: null,
-          umpiresMaster: (typeof UMPIRES_MASTER_2026 !== "undefined") ? UMPIRES_MASTER_2026 : {},
-          nombreCatcher: null,
-          catcherData: null,
-          nombreVenue: venue,
-          parkFactors: (typeof PARK_FACTORS_2026 !== "undefined") ? PARK_FACTORS_2026 : {},
-          climaData: null
-        });
+        // --- Pitcher de casa (home) enfrenta al lineup visitante (away) ---
+        var lineaObjHome = lineasCache ? lineaPonchesBuscarPitcher(pHomeName) : null;
+        var lineaMercadoHome = (lineaObjHome && lineaObjHome.total_k !== null && lineaObjHome.total_k !== undefined) ? lineaObjHome.total_k : null;
 
-        html += tarjetaK6Nuevo(away+" @ "+home, venue, pAwayName, resultado, lineaMercadoVal);
+        if (!pHomeId) {
+          html += tarjetaK6Nuevo(away+" @ "+home, venue, "TBD ("+home+")", {k6_proyectado:null, motivo:"SIN_PITCHER_PROBABLE"}, lineaMercadoHome);
+        } else {
+          log("Procesando " + pHomeName + "...");
+          var u5Home = await jalarUltimos5(pHomeId, new Date().getFullYear());
+          var resultadoHome = calcularK6({
+            playerId: pHomeId,
+            juegosRecientes: u5Home.juegos || [],
+            arsenalMaster: (typeof ARSENAL_MASTER_2026 !== "undefined") ? ARSENAL_MASTER_2026 : {},
+            nombreEquipoRival: away,
+            nombreUmpireNormalizado: null,
+            umpiresMaster: (typeof UMPIRES_MASTER_2026 !== "undefined") ? UMPIRES_MASTER_2026 : {},
+            nombreCatcher: null,
+            catcherData: null,
+            nombreVenue: venue,
+            parkFactors: (typeof PARK_FACTORS_2026 !== "undefined") ? PARK_FACTORS_2026 : {},
+            climaData: null
+          });
+          html += tarjetaK6Nuevo(away+" @ "+home, venue, pHomeName+" ("+home+")", resultadoHome, lineaMercadoHome);
+        }
       }
       listaEl.innerHTML = html;
       log("LISTO.");
