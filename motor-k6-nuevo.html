@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>K6 · Motor Nuevo</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,system-ui,sans-serif; background:#0d1117; color:#e6edf3; }
+  header { padding:14px 16px; border-bottom:1px solid #30363d; }
+  h1 { font-size:17px; margin:0; }
+  main { padding:16px; max-width:900px; margin:0 auto; }
+  .back { color:#79c0ff; text-decoration:none; font-size:14px; }
+  .go { width:100%; border:0; border-radius:10px; padding:18px; font-size:17px; font-weight:800; color:#fff; background:#0d8a6e; cursor:pointer; margin-top:14px; }
+  .go:disabled { background:#30363d; color:#8b949e; }
+  .juego { background:#161b22; border:1px solid #30363d; border-radius:14px; padding:16px; margin-top:14px; }
+  .matchup { font-size:18px; font-weight:800; }
+  .estadio { font-size:13px; color:#8b949e; margin:3px 0; }
+  .lineas { display:flex; gap:8px; margin:8px 0 2px; }
+  .lbox { flex:1; background:#0d1117; border:1px solid #30363d; border-radius:10px; padding:10px; text-align:center; }
+  .lbox .lbl { font-size:10px; color:#8b949e; letter-spacing:0.3px; }
+  .lbox .val { font-size:20px; font-weight:800; margin-top:2px; color:#79c0ff; }
+  .lbox.nuevo .val { color:#0d8a6e; }
+  .lbox.mercado .val { color:#ffd60a; }
+  .lbox .sub { font-size:9px; color:#6e7681; margin-top:2px; }
+  .badge { display:inline-block; font-size:11px; font-weight:700; border-radius:6px; padding:3px 8px; margin-top:8px; }
+  .badge.ok { background:#0d3a2c; color:#3fb950; }
+  .badge.warn { background:#3a2f0d; color:#ffd60a; }
+  .ultimos5 { margin-top:12px; border-top:1px solid #30363d; padding-top:8px; }
+  .u5hdr { font-size:11px; color:#8b949e; font-weight:700; letter-spacing:0.5px; margin-bottom:6px; }
+  .u5row { display:flex; justify-content:space-between; font-size:12px; padding:5px 0; border-bottom:1px solid #21262d; }
+  .u5row span { color:#8b949e; }
+  .u5row b { color:#e6edf3; }
+  .u5row.no-califica { opacity:0.4; }
+  .capas { margin-top:10px; font-size:11px; color:#8b949e; }
+  #console { margin-top:16px; background:#010409; border:1px solid #30363d; border-radius:8px; padding:12px; min-height:40px; font-family:ui-monospace,monospace; font-size:12px; white-space:pre-wrap; }
+</style>
+</head>
+<body>
+<header><h1>K6 · Motor Nuevo (DataPro)</h1></header>
+<main>
+  <a class="back" href="k6-test.html">← Volver a K6 · Ponches</a>
+  <button id="goCargar" class="go">VER K6 NUEVO DE HOY</button>
+  <div id="lista"></div>
+  <div id="console">Pulsa el botón.</div>
+</main>
+
+<script src="mlb-routes.js"></script>
+<script src="arsenal-master.js"></script>
+<script src="umpires-master.js"></script>
+<script src="park-factors.js"></script>
+<script src="jalar-clima.js"></script>
+<script src="jalar-ultimos5.js"></script>
+<script src="motor-k6-nuevo.js"></script>
+
+<script>
+  var consoleEl = document.getElementById("console");
+  var listaEl = document.getElementById("lista");
+  function log(t){ var d=document.createElement("div"); d.textContent=t; consoleEl.appendChild(d); consoleEl.scrollTop=consoleEl.scrollHeight; }
+
+  function hoyISO(){
+    var d=new Date(Date.now()-6*60*60*1000);
+    return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2);
+  }
+
+  function tarjetaK6Nuevo(matchup, venue, pitcherNombre, resultado, lineaMercado){
+    var k6Val, k6Badge;
+    if (resultado.k6_proyectado === null) {
+      k6Val = "N/C";
+      k6Badge = '<span class="badge warn">'+(resultado.motivo||"NO_CONFIRMADO")+'</span>';
+    } else {
+      k6Val = resultado.k6_proyectado;
+      var nSinConfirmar = resultado.capas_sin_confirmar ? resultado.capas_sin_confirmar.length : 0;
+      k6Badge = nSinConfirmar === 0
+        ? '<span class="badge ok">CONFIRMADO</span>'
+        : '<span class="badge warn">'+nSinConfirmar+' capa(s) sin confirmar: '+resultado.capas_sin_confirmar.join(", ")+'</span>';
+    }
+
+    var lineas = '<div class="lineas">'+
+      '<div class="lbox nuevo"><div class="lbl">K6 DATAPRO (nuevo)</div><div class="val">'+k6Val+'</div></div>'+
+      '<div class="lbox mercado"><div class="lbl">LÍNEA MERCADO</div><div class="val">'+(lineaMercado!==null?lineaMercado:"N/C")+'</div></div>'+
+    '</div>';
+
+    var u5html = '';
+    if (resultado.capas && resultado.capas.base_volumen && resultado.capas.base_volumen.status !== "NO_CONFIRMADO") {
+      u5html = '<div class="ultimos5"><div class="u5hdr">ÚLTIMOS STARTS (filtro &ge;6.0 IP — '+
+        resultado.n_starts_usados+' calificados)</div>';
+      // nota: el detalle juego-por-juego viene de jalarUltimos5; aqui solo se resume el agregado
+      u5html += '<div class="u5row"><span>K promedio (starts calificados)</span><b>'+resultado.base_k_real+'</b></div>';
+      if (resultado.capas.base_volumen.pitches_promedio !== null) {
+        u5html += '<div class="u5row"><span>Pitcheos promedio</span><b>'+resultado.capas.base_volumen.pitches_promedio+'</b></div>';
+      }
+      if (resultado.capas.base_volumen.pitches_por_k !== null) {
+        u5html += '<div class="u5row"><span>Pitcheos por K</span><b>'+resultado.capas.base_volumen.pitches_por_k+'</b></div>';
+      }
+      u5html += '</div>';
+    }
+
+    return '<div class="juego">'+
+      '<div class="matchup">'+matchup+'</div>'+
+      '<div class="estadio">'+venue+'</div>'+
+      '<div class="estadio">⚾ '+pitcherNombre+'</div>'+
+      lineas + k6Badge + u5html +
+    '</div>';
+  }
+
+  document.getElementById("goCargar").addEventListener("click", async function(){
+    var btn = this; btn.disabled = true; btn.textContent = "TRABAJANDO…";
+    consoleEl.textContent = ""; listaEl.innerHTML = "";
+    try {
+      log("Trayendo juegos de hoy...");
+      var hoy = hoyISO();
+      var mlbUrl = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date="+hoy+"&hydrate=probablePitcher";
+      var resp = await fetch(MLB_ROUTES.WORKER_BASE + encodeURIComponent(mlbUrl));
+      if (!resp.ok) throw new Error("Schedule HTTP " + resp.status);
+      var data = await resp.json();
+      var games = (data.dates && data.dates[0]) ? data.dates[0].games : [];
+      log("Juegos hoy: " + games.length);
+      if (games.length === 0) { log("No hay juegos hoy."); return; }
+
+      var html = "";
+      for (var i = 0; i < games.length; i++) {
+        var g = games[i];
+        var venue = g.venue ? g.venue.name : "";
+        var away = (g.teams && g.teams.away && g.teams.away.team) ? g.teams.away.team.name : "?";
+        var home = (g.teams && g.teams.home && g.teams.home.team) ? g.teams.home.team.name : "?";
+        var pAwayId = (g.teams && g.teams.away && g.teams.away.probablePitcher) ? g.teams.away.probablePitcher.id : null;
+        var pAwayName = (g.teams && g.teams.away && g.teams.away.probablePitcher) ? g.teams.away.probablePitcher.fullName : "TBD";
+
+        if (!pAwayId) {
+          html += tarjetaK6Nuevo(away+" @ "+home, venue, "TBD", {k6_proyectado:null, motivo:"SIN_PITCHER_PROBABLE"}, null);
+          continue;
+        }
+
+        log("Procesando " + pAwayName + "...");
+        var u5 = await jalarUltimos5(pAwayId, new Date().getFullYear());
+        var resultado = calcularK6({
+          playerId: pAwayId,
+          juegosRecientes: u5.juegos || [],
+          arsenalMaster: (typeof ARSENAL_MASTER_2026 !== "undefined") ? ARSENAL_MASTER_2026 : {},
+          nombreEquipoRival: home,
+          nombreUmpireNormalizado: null,
+          umpiresMaster: (typeof UMPIRES_MASTER_2026 !== "undefined") ? UMPIRES_MASTER_2026 : {},
+          nombreCatcher: null,
+          catcherData: null,
+          nombreVenue: venue,
+          parkFactors: (typeof PARK_FACTORS_2026 !== "undefined") ? PARK_FACTORS_2026 : {},
+          climaData: null
+        });
+
+        html += tarjetaK6Nuevo(away+" @ "+home, venue, pAwayName, resultado, null);
+      }
+      listaEl.innerHTML = html;
+      log("LISTO.");
+    } catch (e) {
+      log("ERROR: " + (e && e.message ? e.message : e));
+    } finally {
+      btn.disabled = false; btn.textContent = "VER K6 NUEVO DE HOY";
+    }
+  });
+</script>
+</body>
+</html>
