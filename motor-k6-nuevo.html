@@ -89,10 +89,10 @@
 
     var u5html = '';
     if (resultado.capas && resultado.capas.base_volumen && resultado.capas.base_volumen.status !== "NO_CONFIRMADO") {
-      u5html = '<div class="ultimos5"><div class="u5hdr">ÚLTIMOS STARTS (filtro &ge;6.0 IP — '+
-        resultado.n_starts_usados+' calificados)</div>';
+      u5html = '<div class="ultimos5"><div class="u5hdr">ÚLTIMOS STARTS (K6 escalado por start — '+
+        resultado.n_starts_usados+' usados)</div>';
       // nota: el detalle juego-por-juego viene de jalarUltimos5; aqui solo se resume el agregado
-      u5html += '<div class="u5row"><span>K promedio (starts calificados)</span><b>'+resultado.base_k_real+'</b></div>';
+      u5html += '<div class="u5row"><span>K6 promedio (escalado K×6/IP)</span><b>'+resultado.base_k_real+'</b></div>';
       if (resultado.capas.base_volumen.pitches_promedio !== null) {
         u5html += '<div class="u5row"><span>Pitcheos promedio</span><b>'+resultado.capas.base_volumen.pitches_promedio+'</b></div>';
       }
