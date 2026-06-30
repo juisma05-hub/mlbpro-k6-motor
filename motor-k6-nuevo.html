@@ -50,7 +50,7 @@
 <script src="arsenal-master.js"></script>
 <script src="umpires-master.js"></script>
 <script src="park-factors.js"></script>
-<script src="jalar-linea.js"></script>
+<script src="jalar-linea-ponches.js"></script>
 <script src="jalar-ultimos5.js"></script>
 <script src="motor-k6-nuevo.js"></script>
 
@@ -109,9 +109,9 @@
     var btn = this; btn.disabled = true; btn.textContent = "TRABAJANDO…";
     consoleEl.textContent = ""; listaEl.innerHTML = "";
     try {
-      log("Trayendo líneas de mercado...");
+      log("Trayendo líneas de ponches...");
       var lineasCache = null;
-      try { lineasCache = await jalarLineas(log); }
+      try { lineasCache = await jalarLineasPonches(log); }
       catch (el) { log("AVISO líneas: " + (el && el.message ? el.message : el)); lineasCache = null; }
 
       log("Trayendo juegos de hoy...");
@@ -133,8 +133,8 @@
         var pAwayId = (g.teams && g.teams.away && g.teams.away.probablePitcher) ? g.teams.away.probablePitcher.id : null;
         var pAwayName = (g.teams && g.teams.away && g.teams.away.probablePitcher) ? g.teams.away.probablePitcher.fullName : "TBD";
 
-        var lineaObj = lineasCache ? lineasBuscarVenue(venue) : null;
-        var lineaMercadoVal = (lineaObj && lineaObj.total !== null && lineaObj.total !== undefined) ? lineaObj.total : null;
+        var lineaObj = lineasCache ? lineaPonchesBuscarPitcher(pAwayName) : null;
+        var lineaMercadoVal = (lineaObj && lineaObj.total_k !== null && lineaObj.total_k !== undefined) ? lineaObj.total_k : null;
 
         if (!pAwayId) {
           html += tarjetaK6Nuevo(away+" @ "+home, venue, "TBD", {k6_proyectado:null, motivo:"SIN_PITCHER_PROBABLE"}, lineaMercadoVal);
