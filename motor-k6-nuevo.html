@@ -147,22 +147,27 @@
         if (!pAwayId) {
           html += tarjetaK6Nuevo(away+" @ "+home, venue, "TBD ("+away+")", {k6_proyectado:null, motivo:"SIN_PITCHER_PROBABLE"}, lineaMercadoAway);
         } else {
-          log("Procesando " + pAwayName + "...");
-          var u5Away = await jalarUltimos5(pAwayId, new Date().getFullYear());
-          var resultadoAway = calcularK6({
-            playerId: pAwayId,
-            juegosRecientes: u5Away.juegos || [],
-            arsenalMaster: (typeof ARSENAL_MASTER_2026 !== "undefined") ? ARSENAL_MASTER_2026 : {},
-            nombreEquipoRival: home,
-            nombreUmpireNormalizado: null,
-            umpiresMaster: (typeof UMPIRES_MASTER_2026 !== "undefined") ? UMPIRES_MASTER_2026 : {},
-            nombreCatcher: null,
-            catcherData: null,
-            nombreVenue: venue,
-            parkFactors: (typeof PARK_FACTORS_2026 !== "undefined") ? PARK_FACTORS_2026 : {},
-            climaData: null
-          });
-          html += tarjetaK6Nuevo(away+" @ "+home, venue, pAwayName+" ("+away+")", resultadoAway, lineaMercadoAway);
+          try {
+            log("Procesando " + pAwayName + "...");
+            var u5Away = await jalarUltimos5(pAwayId, new Date().getFullYear());
+            var resultadoAway = calcularK6({
+              playerId: pAwayId,
+              juegosRecientes: u5Away.juegos || [],
+              arsenalMaster: (typeof ARSENAL_MASTER_2026 !== "undefined") ? ARSENAL_MASTER_2026 : {},
+              nombreEquipoRival: home,
+              nombreUmpireNormalizado: null,
+              umpiresMaster: (typeof UMPIRES_MASTER_2026 !== "undefined") ? UMPIRES_MASTER_2026 : {},
+              nombreCatcher: null,
+              catcherData: null,
+              nombreVenue: venue,
+              parkFactors: (typeof PARK_FACTORS_2026 !== "undefined") ? PARK_FACTORS_2026 : {},
+              climaData: null
+            });
+            html += tarjetaK6Nuevo(away+" @ "+home, venue, pAwayName+" ("+away+")", resultadoAway, lineaMercadoAway);
+          } catch (eAway) {
+            log("ERROR procesando " + pAwayName + ": " + (eAway && eAway.message ? eAway.message : eAway));
+            html += tarjetaK6Nuevo(away+" @ "+home, venue, pAwayName+" ("+away+")", {k6_proyectado:null, motivo:"ERROR_AL_PROCESAR"}, lineaMercadoAway);
+          }
         }
 
         // --- Pitcher de casa (home) enfrenta al lineup visitante (away) ---
@@ -172,25 +177,33 @@
         if (!pHomeId) {
           html += tarjetaK6Nuevo(away+" @ "+home, venue, "TBD ("+home+")", {k6_proyectado:null, motivo:"SIN_PITCHER_PROBABLE"}, lineaMercadoHome);
         } else {
-          log("Procesando " + pHomeName + "...");
-          var u5Home = await jalarUltimos5(pHomeId, new Date().getFullYear());
-          var resultadoHome = calcularK6({
-            playerId: pHomeId,
-            juegosRecientes: u5Home.juegos || [],
-            arsenalMaster: (typeof ARSENAL_MASTER_2026 !== "undefined") ? ARSENAL_MASTER_2026 : {},
-            nombreEquipoRival: away,
-            nombreUmpireNormalizado: null,
-            umpiresMaster: (typeof UMPIRES_MASTER_2026 !== "undefined") ? UMPIRES_MASTER_2026 : {},
-            nombreCatcher: null,
-            catcherData: null,
-            nombreVenue: venue,
-            parkFactors: (typeof PARK_FACTORS_2026 !== "undefined") ? PARK_FACTORS_2026 : {},
-            climaData: null
-          });
-          html += tarjetaK6Nuevo(away+" @ "+home, venue, pHomeName+" ("+home+")", resultadoHome, lineaMercadoHome);
+          try {
+            log("Procesando " + pHomeName + "...");
+            var u5Home = await jalarUltimos5(pHomeId, new Date().getFullYear());
+            var resultadoHome = calcularK6({
+              playerId: pHomeId,
+              juegosRecientes: u5Home.juegos || [],
+              arsenalMaster: (typeof ARSENAL_MASTER_2026 !== "undefined") ? ARSENAL_MASTER_2026 : {},
+              nombreEquipoRival: away,
+              nombreUmpireNormalizado: null,
+              umpiresMaster: (typeof UMPIRES_MASTER_2026 !== "undefined") ? UMPIRES_MASTER_2026 : {},
+              nombreCatcher: null,
+              catcherData: null,
+              nombreVenue: venue,
+              parkFactors: (typeof PARK_FACTORS_2026 !== "undefined") ? PARK_FACTORS_2026 : {},
+              climaData: null
+            });
+            html += tarjetaK6Nuevo(away+" @ "+home, venue, pHomeName+" ("+home+")", resultadoHome, lineaMercadoHome);
+          } catch (eHome) {
+            log("ERROR procesando " + pHomeName + ": " + (eHome && eHome.message ? eHome.message : eHome));
+            html += tarjetaK6Nuevo(away+" @ "+home, venue, pHomeName+" ("+home+")", {k6_proyectado:null, motivo:"ERROR_AL_PROCESAR"}, lineaMercadoHome);
+          }
         }
+
+        // RENDER PROGRESIVO: pintamos lo que llevamos despues de CADA juego,
+        // no solo al final. Asi si algo falla mas adelante, lo ya hecho se ve.
+        listaEl.innerHTML = html;
       }
-      listaEl.innerHTML = html;
       log("LISTO.");
     } catch (e) {
       log("ERROR: " + (e && e.message ? e.message : e));
