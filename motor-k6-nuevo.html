@@ -17,6 +17,10 @@
   .juego { background:#161b22; border:1px solid #30363d; border-radius:14px; padding:16px; margin-top:14px; }
   .matchup { font-size:18px; font-weight:800; }
   .estadio { font-size:13px; color:#8b949e; margin:3px 0; }
+  .pitcher-bloque { margin-top:14px; padding-top:12px; border-top:1px solid #21262d; }
+  .pitcher-bloque:first-of-type { border-top:none; margin-top:8px; padding-top:0; }
+  .pitcher-nombre { font-size:14px; font-weight:700; margin-bottom:6px; }
+  .pitcher-nombre .equipo { font-weight:500; color:#8b949e; font-size:12px; }
   .lineas { display:flex; gap:8px; margin:8px 0 2px; }
   .lbox { flex:1; background:#0d1117; border:1px solid #30363d; border-radius:10px; padding:10px; text-align:center; }
   .lbox .lbl { font-size:10px; color:#8b949e; letter-spacing:0.3px; }
@@ -24,6 +28,12 @@
   .lbox.nuevo .val { color:#0d8a6e; }
   .lbox.mercado .val { color:#ffd60a; }
   .lbox .sub { font-size:9px; color:#6e7681; margin-top:2px; }
+  .margen-chip { display:inline-block; font-size:11px; font-weight:800; border-radius:6px; padding:5px 10px; margin-top:8px; }
+  .margen-chip.OVER_CON_MARGEN { background:#0d3a2c; color:#3fb950; }
+  .margen-chip.LEAN_OVER { background:#0d3a2c; color:#7ee8a0; }
+  .margen-chip.PEGADO { background:#3a2f0d; color:#ffd60a; }
+  .margen-chip.LEAN_UNDER { background:#3a0d0d; color:#ff9d9d; }
+  .margen-chip.UNDER_CLARO { background:#3a0d0d; color:#ff453a; }
   .badge { display:inline-block; font-size:11px; font-weight:700; border-radius:6px; padding:3px 8px; margin-top:8px; }
   .badge.ok { background:#0d3a2c; color:#3fb950; }
   .badge.warn { background:#3a2f0d; color:#ffd60a; }
@@ -32,8 +42,6 @@
   .u5row { display:flex; justify-content:space-between; font-size:12px; padding:5px 0; border-bottom:1px solid #21262d; }
   .u5row span { color:#8b949e; }
   .u5row b { color:#e6edf3; }
-  .u5row.no-califica { opacity:0.4; }
-  .capas { margin-top:10px; font-size:11px; color:#8b949e; }
   #console { margin-top:16px; background:#010409; border:1px solid #30363d; border-radius:8px; padding:12px; min-height:40px; font-family:ui-monospace,monospace; font-size:12px; white-space:pre-wrap; }
 </style>
 </head>
@@ -64,12 +72,16 @@
     return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2);
   }
 
-  function tarjetaK6Nuevo(matchup, venue, pitcherNombre, resultado, lineaMercado){
+  // ── UN pitcher, dentro de la tarjeta compartida del juego ──
+  function bloquePitcherHtml(equipoNombre, pitcherNombre, resultado, lineaMercado){
     var k6Val, k6Badge;
     if (resultado.k6_proyectado === null) {
       k6Val = "N/C";
       k6Badge = '<span class="badge warn">'+(resultado.motivo||"NO_CONFIRMADO")+'</span>';
     } else {
+      // FIX: k6_proyectado ya viene redondeado a 1 decimal SOLO para mostrar
+      // (motor-k6-nuevo.js lo separa de k6_proyectado_preciso, que es el
+      // que se usa para comparar contra la linea, nunca este).
       k6Val = resultado.k6_proyectado;
       var nSinConfirmar = resultado.capas_sin_confirmar ? resultado.capas_sin_confirmar.length : 0;
       k6Badge = nSinConfirmar === 0
@@ -82,31 +94,49 @@
       '<div class="lbox mercado"><div class="lbl">LÍNEA MERCADO</div><div class="val">'+(lineaMercado!==null?lineaMercado:"N/C")+'</div></div>'+
     '</div>';
 
+    // NUEVO: comparacion con margen (con el numero PRECISO, no el redondeado)
+    var margenHtml = '';
+    if (resultado.k6_proyectado_preciso !== null && lineaMercado !== null && typeof compararConLinea === "function") {
+      var comp = compararConLinea(resultado.k6_proyectado_preciso, lineaMercado);
+      if (comp.lectura !== "NO_CONFIRMADO") {
+        margenHtml = '<div class="margen-chip '+comp.lectura+'">'+comp.texto+' ('+(comp.diferencia_display>=0?'+':'')+comp.diferencia_display+')</div>';
+      }
+    }
+
     var muestraWarn = '';
     if (resultado.muestra_status === "MUESTRA_PEQUENA") {
-      muestraWarn = '<span class="badge warn">MUESTRA PEQUEÑA: solo '+resultado.n_starts_usados+' start(s) calificado(s) — leer con mucha cautela</span>';
+      muestraWarn = '<div><span class="badge warn">MUESTRA PEQUEÑA: solo '+resultado.n_starts_usados+' start(s) calificado(s) — leer con mucha cautela</span></div>';
     }
 
     var u5html = '';
     if (resultado.capas && resultado.capas.base_volumen && resultado.capas.base_volumen.status !== "NO_CONFIRMADO") {
+      var bv = resultado.capas.base_volumen;
       u5html = '<div class="ultimos5"><div class="u5hdr">ÚLTIMOS STARTS (K6 escalado por start — '+
         resultado.n_starts_usados+' usados)</div>';
-      // nota: el detalle juego-por-juego viene de jalarUltimos5; aqui solo se resume el agregado
       u5html += '<div class="u5row"><span>K6 promedio (escalado K×6/IP)</span><b>'+resultado.base_k_real+'</b></div>';
-      if (resultado.capas.base_volumen.pitches_promedio !== null) {
-        u5html += '<div class="u5row"><span>Pitcheos promedio</span><b>'+resultado.capas.base_volumen.pitches_promedio+'</b></div>';
+      // FIX: usar los campos _display (ya redondeados para leer), no los
+      // crudos sin redondear — antes salia "15.833333333333334".
+      if (bv.pitches_promedio_display !== null) {
+        u5html += '<div class="u5row"><span>Pitcheos promedio</span><b>'+bv.pitches_promedio_display+'</b></div>';
       }
-      if (resultado.capas.base_volumen.pitches_por_k !== null) {
-        u5html += '<div class="u5row"><span>Pitcheos por K</span><b>'+resultado.capas.base_volumen.pitches_por_k+'</b></div>';
+      if (bv.pitches_por_k_display !== null) {
+        u5html += '<div class="u5row"><span>Pitcheos por K</span><b>'+bv.pitches_por_k_display+'</b></div>';
       }
       u5html += '</div>';
     }
 
+    return '<div class="pitcher-bloque">'+
+      '<div class="pitcher-nombre">⚾ '+pitcherNombre+' <span class="equipo">('+equipoNombre+')</span></div>'+
+      lineas + k6Badge + margenHtml + muestraWarn + u5html +
+    '</div>';
+  }
+
+  // ── LA tarjeta del juego, con los 2 pitchers juntos adentro ──
+  function tarjetaJuegoHtml(matchup, venue, bloqueAwayHtml, bloqueHomeHtml){
     return '<div class="juego">'+
       '<div class="matchup">'+matchup+'</div>'+
       '<div class="estadio">'+venue+'</div>'+
-      '<div class="estadio">⚾ '+pitcherNombre+'</div>'+
-      lineas + k6Badge + muestraWarn + u5html +
+      bloqueAwayHtml + bloqueHomeHtml +
     '</div>';
   }
 
@@ -143,9 +173,11 @@
         // --- Pitcher visitante (away) enfrenta al lineup de casa (home) ---
         var lineaObjAway = lineasCache ? lineaPonchesBuscarPitcher(pAwayName) : null;
         var lineaMercadoAway = (lineaObjAway && lineaObjAway.total_k !== null && lineaObjAway.total_k !== undefined) ? lineaObjAway.total_k : null;
+        log("Línea K de mercado para " + pAwayName + ": " + (lineaMercadoAway !== null ? lineaMercadoAway : "N/C"));
 
+        var bloqueAway;
         if (!pAwayId) {
-          html += tarjetaK6Nuevo(away+" @ "+home, venue, "TBD ("+away+")", {k6_proyectado:null, motivo:"SIN_PITCHER_PROBABLE"}, lineaMercadoAway);
+          bloqueAway = bloquePitcherHtml(away, "TBD", {k6_proyectado:null, k6_proyectado_preciso:null, motivo:"SIN_PITCHER_PROBABLE"}, lineaMercadoAway);
         } else {
           try {
             log("Procesando " + pAwayName + "...");
@@ -163,19 +195,21 @@
               parkFactors: (typeof PARK_FACTORS_2026 !== "undefined") ? PARK_FACTORS_2026 : {},
               climaData: null
             });
-            html += tarjetaK6Nuevo(away+" @ "+home, venue, pAwayName+" ("+away+")", resultadoAway, lineaMercadoAway);
+            bloqueAway = bloquePitcherHtml(away, pAwayName, resultadoAway, lineaMercadoAway);
           } catch (eAway) {
             log("ERROR procesando " + pAwayName + ": " + (eAway && eAway.message ? eAway.message : eAway));
-            html += tarjetaK6Nuevo(away+" @ "+home, venue, pAwayName+" ("+away+")", {k6_proyectado:null, motivo:"ERROR_AL_PROCESAR"}, lineaMercadoAway);
+            bloqueAway = bloquePitcherHtml(away, pAwayName, {k6_proyectado:null, k6_proyectado_preciso:null, motivo:"ERROR_AL_PROCESAR"}, lineaMercadoAway);
           }
         }
 
         // --- Pitcher de casa (home) enfrenta al lineup visitante (away) ---
         var lineaObjHome = lineasCache ? lineaPonchesBuscarPitcher(pHomeName) : null;
         var lineaMercadoHome = (lineaObjHome && lineaObjHome.total_k !== null && lineaObjHome.total_k !== undefined) ? lineaObjHome.total_k : null;
+        log("Línea K de mercado para " + pHomeName + ": " + (lineaMercadoHome !== null ? lineaMercadoHome : "N/C"));
 
+        var bloqueHome;
         if (!pHomeId) {
-          html += tarjetaK6Nuevo(away+" @ "+home, venue, "TBD ("+home+")", {k6_proyectado:null, motivo:"SIN_PITCHER_PROBABLE"}, lineaMercadoHome);
+          bloqueHome = bloquePitcherHtml(home, "TBD", {k6_proyectado:null, k6_proyectado_preciso:null, motivo:"SIN_PITCHER_PROBABLE"}, lineaMercadoHome);
         } else {
           try {
             log("Procesando " + pHomeName + "...");
@@ -193,15 +227,18 @@
               parkFactors: (typeof PARK_FACTORS_2026 !== "undefined") ? PARK_FACTORS_2026 : {},
               climaData: null
             });
-            html += tarjetaK6Nuevo(away+" @ "+home, venue, pHomeName+" ("+home+")", resultadoHome, lineaMercadoHome);
+            bloqueHome = bloquePitcherHtml(home, pHomeName, resultadoHome, lineaMercadoHome);
           } catch (eHome) {
             log("ERROR procesando " + pHomeName + ": " + (eHome && eHome.message ? eHome.message : eHome));
-            html += tarjetaK6Nuevo(away+" @ "+home, venue, pHomeName+" ("+home+")", {k6_proyectado:null, motivo:"ERROR_AL_PROCESAR"}, lineaMercadoHome);
+            bloqueHome = bloquePitcherHtml(home, pHomeName, {k6_proyectado:null, k6_proyectado_preciso:null, motivo:"ERROR_AL_PROCESAR"}, lineaMercadoHome);
           }
         }
 
-        // RENDER PROGRESIVO: pintamos lo que llevamos despues de CADA juego,
-        // no solo al final. Asi si algo falla mas adelante, lo ya hecho se ve.
+        // FIX: los dos pitchers del mismo juego van juntos en UNA tarjeta,
+        // no en dos tarjetas separadas repitiendo el mismo matchup/parque.
+        html += tarjetaJuegoHtml(away+" @ "+home, venue, bloqueAway, bloqueHome);
+
+        // RENDER PROGRESIVO: se pinta despues de cada juego completo.
         listaEl.innerHTML = html;
       }
       log("LISTO.");
