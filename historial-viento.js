@@ -1,61 +1,66 @@
 // historial-viento.js
-// Cruza jalarUltimos5(pitcherId) con climaLeerCache() por fecha + equipo.
-// Pegar este archivo en el repo y llamar toggleHistorialK(pitcherId, equipoPitcher) desde el HTML.
+// Muestra el historial de un pitcher (fecha, rival, IP, K, BB, ER, pitcheos, viento)
+// usando los datos que ya trajo motor-k6-nuevo.html (window.historialPitchers)
+// y el cache de jalar-clima.js (climaLeerCache) para cruzar el viento por fecha+equipo.
 
-function buscarClimaDelStart(start, equipoPitcher, cacheClima) {
-  const fecha = start.fecha || start.date;
-  if (!fecha) return null;
-
-  return cacheClima.find(function (c) {
-    if (c.date !== fecha) return false;
-    return c.home_team === equipoPitcher || c.away_team === equipoPitcher;
-  }) || null;
-}
-
-function toggleHistorialK(pitcherId, equipoPitcher) {
-  const contenedor = document.getElementById("historial-" + pitcherId);
+function toggleHistorialK(pitcherId) {
+  var contenedor = document.getElementById("historial-" + pitcherId);
   if (!contenedor) return;
 
-  if (contenedor.style.display !== "none" && contenedor.innerHTML !== "") {
+  if (contenedor.style.display === "block") {
     contenedor.style.display = "none";
     return;
   }
 
-  const starts = jalarUltimos5(pitcherId);
-  const cacheClima = climaLeerCache();
-
-  if (!starts || starts.length === 0) {
-    contenedor.innerHTML = "<p>NO_CONFIRMADO: sin datos de ultimos starts para " + pitcherId + "</p>";
+  var datos = window.historialPitchers && window.historialPitchers[pitcherId];
+  if (!datos || !datos.juegos || datos.juegos.length === 0) {
+    contenedor.innerHTML = "<p style='color:#8b949e;font-size:12px;'>NO_CONFIRMADO: sin datos de starts para este pitcher</p>";
     contenedor.style.display = "block";
     return;
   }
 
-  const filas = starts.map(function (s) {
-    const fecha = s.fecha || s.date || "NO_CONFIRMADO";
-    const rival = (equipoPitcher && s.home_team === equipoPitcher) ? s.away_team
-                : (equipoPitcher && s.away_team === equipoPitcher) ? s.home_team
-                : (s.rival || s.opponent || "NO_CONFIRMADO");
+  var cacheClima = [];
+  try { cacheClima = (typeof climaLeerCache === "function") ? climaLeerCache() : []; }
+  catch (e) { cacheClima = []; }
 
-    const clima = buscarClimaDelStart(s, equipoPitcher, cacheClima);
-    const viento = clima ? (clima.windspeed_mph + " mph " + clima.wind_dir) : "NO_CONFIRMADO";
-    const venue = clima ? clima.venue : "NO_CONFIRMADO";
+  var equipoPitcher = datos.equipo;
+
+  var filas = datos.juegos.map(function (s) {
+    var fecha = s.date || s.fecha || (s.gameDate ? s.gameDate.slice(0, 10) : "NO_CONFIRMADO");
+
+    var clima = cacheClima.find(function (c) {
+      return c.date === fecha && (c.home_team === equipoPitcher || c.away_team === equipoPitcher);
+    });
+
+    var rival = clima
+      ? (clima.home_team === equipoPitcher ? clima.away_team : clima.home_team)
+      : (s.rival || s.opponent || "NO_CONFIRMADO");
+
+    var venue = clima ? clima.venue : (s.venue || "NO_CONFIRMADO");
+    var viento = clima ? (clima.windspeed_mph + " mph " + clima.wind_dir) : "NO_CONFIRMADO";
+
+    var ip = s.ip ?? s.inningsPitched ?? "";
+    var k = s.k ?? s.strikeOuts ?? "";
+    var bb = s.bb ?? s.baseOnBalls ?? "";
+    var er = s.er ?? s.earnedRuns ?? "";
+    var pitcheos = s.pitcheos ?? s.numberOfPitches ?? "";
 
     return "<tr>" +
       "<td>" + fecha + "</td>" +
       "<td>vs " + rival + "</td>" +
       "<td>" + venue + "</td>" +
-      "<td>" + (s.ip ?? "") + "</td>" +
-      "<td>" + (s.k ?? "") + "</td>" +
-      "<td>" + (s.bb ?? "") + "</td>" +
-      "<td>" + (s.er ?? "") + "</td>" +
-      "<td>" + (s.pitcheos ?? "") + "</td>" +
+      "<td>" + ip + "</td>" +
+      "<td>" + k + "</td>" +
+      "<td>" + bb + "</td>" +
+      "<td>" + er + "</td>" +
+      "<td>" + pitcheos + "</td>" +
       "<td>" + viento + "</td>" +
       "</tr>";
   }).join("");
 
   contenedor.innerHTML =
-    "<table class='tabla-historial'>" +
-    "<thead><tr><th>Fecha</th><th>Rival</th><th>Parque</th><th>IP</th><th>K</th><th>BB</th><th>ER</th><th>Pitcheos</th><th>Viento</th></tr></thead>" +
+    "<table class='tabla-historial' style='width:100%;font-size:11px;border-collapse:collapse;margin-top:6px;'>" +
+    "<thead><tr style='color:#8b949e;'><th>Fecha</th><th>Rival</th><th>Parque</th><th>IP</th><th>K</th><th>BB</th><th>ER</th><th>Pitcheos</th><th>Viento</th></tr></thead>" +
     "<tbody>" + filas + "</tbody></table>";
   contenedor.style.display = "block";
 }
