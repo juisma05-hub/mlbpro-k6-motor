@@ -1,7 +1,25 @@
 // historial-viento.js
-// Muestra el historial de un pitcher (fecha, rival, IP, K, BB, ER, pitcheos, viento)
-// usando los datos que ya trajo motor-k6-nuevo.html (window.historialPitchers)
-// y el cache de jalar-clima.js (climaLeerCache) para cruzar el viento por fecha+equipo.
+// Muestra el historial de un pitcher (fecha, rival, IP, K, carreras, pitcheos, viento)
+// usando el objeto real que devuelve jalarUltimos5() y el cache de jalar-clima.js
+// (climaLeerCache) para cruzar el viento por fecha+equipo.
+//
+// Campos reales de jalarUltimos5().juegos[i] (confirmados en el archivo fuente):
+//   date, pitches, innings_pitched (string MLB ej "3.1"), innings_pitched_real (decimal),
+//   strikeouts, runs_allowed (carreras totales, NO especificamente limpias), opponent
+// NO trae BB (bases por bolas) — se muestra NO_CONFIRMADO en vez de inventarlo.
+
+function venueCanonHV(v) {
+  return (typeof STADIUM_ALIAS_2026 !== "undefined" && STADIUM_ALIAS_2026[v]) ? STADIUM_ALIAS_2026[v] : v;
+}
+
+function buscarClimaDelStart(fecha, equipoPitcher, cacheClima) {
+  if (!fecha || !equipoPitcher) return null;
+  return cacheClima.find(function (c) {
+    if (c.date !== fecha) return false;
+    var home = venueCanonHV(c.home_team), away = venueCanonHV(c.away_team);
+    return c.home_team === equipoPitcher || c.away_team === equipoPitcher;
+  }) || null;
+}
 
 function toggleHistorialK(pitcherId) {
   var contenedor = document.getElementById("historial-" + pitcherId);
@@ -26,24 +44,20 @@ function toggleHistorialK(pitcherId) {
   var equipoPitcher = datos.equipo;
 
   var filas = datos.juegos.map(function (s) {
-    var fecha = s.date || s.fecha || (s.gameDate ? s.gameDate.slice(0, 10) : "NO_CONFIRMADO");
+    var fecha = s.date || "NO_CONFIRMADO";
+    var rival = s.opponent || "NO_CONFIRMADO";
 
-    var clima = cacheClima.find(function (c) {
-      return c.date === fecha && (c.home_team === equipoPitcher || c.away_team === equipoPitcher);
-    });
+    var clima = buscarClimaDelStart(fecha, equipoPitcher, cacheClima);
+    var venue = clima ? clima.venue : "NO_CONFIRMADO";
+    var viento = (clima && clima.windspeed_mph !== undefined && clima.wind_dir !== undefined && clima.wind_dir !== "")
+      ? (clima.windspeed_mph + " mph " + clima.wind_dir + "°")
+      : "NO_CONFIRMADO";
 
-    var rival = clima
-      ? (clima.home_team === equipoPitcher ? clima.away_team : clima.home_team)
-      : (s.rival || s.opponent || "NO_CONFIRMADO");
-
-    var venue = clima ? clima.venue : (s.venue || "NO_CONFIRMADO");
-    var viento = clima ? (clima.windspeed_mph + " mph " + clima.wind_dir) : "NO_CONFIRMADO";
-
-    var ip = s.ip ?? s.inningsPitched ?? "";
-    var k = s.k ?? s.strikeOuts ?? "";
-    var bb = s.bb ?? s.baseOnBalls ?? "";
-    var er = s.er ?? s.earnedRuns ?? "";
-    var pitcheos = s.pitcheos ?? s.numberOfPitches ?? "";
+    var ip = (s.innings_pitched !== undefined && s.innings_pitched !== null) ? s.innings_pitched : "NO_CONFIRMADO";
+    var k = (s.strikeouts !== undefined && s.strikeouts !== null) ? s.strikeouts : "NO_CONFIRMADO";
+    var bb = "NO_CONFIRMADO"; // este dato no existe en jalarUltimos5()
+    var carreras = (s.runs_allowed !== undefined && s.runs_allowed !== null) ? s.runs_allowed : "NO_CONFIRMADO";
+    var pitcheos = (s.pitches !== undefined && s.pitches !== null) ? s.pitches : "NO_CONFIRMADO";
 
     return "<tr>" +
       "<td>" + fecha + "</td>" +
@@ -52,7 +66,7 @@ function toggleHistorialK(pitcherId) {
       "<td>" + ip + "</td>" +
       "<td>" + k + "</td>" +
       "<td>" + bb + "</td>" +
-      "<td>" + er + "</td>" +
+      "<td>" + carreras + "</td>" +
       "<td>" + pitcheos + "</td>" +
       "<td>" + viento + "</td>" +
       "</tr>";
@@ -60,7 +74,8 @@ function toggleHistorialK(pitcherId) {
 
   contenedor.innerHTML =
     "<table class='tabla-historial' style='width:100%;font-size:11px;border-collapse:collapse;margin-top:6px;'>" +
-    "<thead><tr style='color:#8b949e;'><th>Fecha</th><th>Rival</th><th>Parque</th><th>IP</th><th>K</th><th>BB</th><th>ER</th><th>Pitcheos</th><th>Viento</th></tr></thead>" +
-    "<tbody>" + filas + "</tbody></table>";
+    "<thead><tr style='color:#8b949e;'><th>Fecha</th><th>Rival</th><th>Parque</th><th>IP</th><th>K</th><th>BB</th><th>Carreras</th><th>Pitcheos</th><th>Viento</th></tr></thead>" +
+    "<tbody>" + filas + "</tbody></table>" +
+    "<div style='font-size:9px;color:#6e7681;margin-top:4px;'>BB no disponible en la fuente de datos actual. Carreras = totales permitidas, no necesariamente limpias (ER).</div>";
   contenedor.style.display = "block";
 }
