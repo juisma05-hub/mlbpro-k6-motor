@@ -304,14 +304,16 @@ async function cargarK6() {
 }
 
 // Cargar automáticamente al abrir la página
-document.addEventListener("DOMContentLoaded", function() {
+window.addEventListener("load", function() {
   cargarK6();
 });
 
 // También permitir recargar con el botón
-document.getElementById("goCargar").addEventListener("click", function() {
-  cargarK6();
-});
+if (document.getElementById("goCargar")) {
+  document.getElementById("goCargar").addEventListener("click", function() {
+    cargarK6();
+  });
+}
 </script>
 </body>
 </html>
