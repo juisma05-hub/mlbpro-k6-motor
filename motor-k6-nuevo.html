@@ -184,8 +184,9 @@ function actualizarMargen(input) {
   }
 }
 
-document.getElementById("goCargar").addEventListener("click", async function(){
-  var btn = this; btn.disabled = true; btn.textContent = "TRABAJANDO…";
+async function cargarK6() {
+  var btn = document.getElementById("goCargar");
+  if (btn) { btn.disabled = true; btn.textContent = "TRABAJANDO…"; }
   consoleEl.textContent = ""; listaEl.innerHTML = "";
 
   try {
@@ -297,8 +298,19 @@ document.getElementById("goCargar").addEventListener("click", async function(){
   } catch (e) {
     log("ERROR: " + (e && e.message ? e.message : e));
   } finally {
-    btn.disabled = false; btn.textContent = "VER K6 NUEVO DE HOY";
+    var btn = document.getElementById("goCargar");
+    if (btn) { btn.disabled = false; btn.textContent = "VER K6 NUEVO DE HOY"; }
   }
+}
+
+// Cargar automáticamente al abrir la página
+document.addEventListener("DOMContentLoaded", function() {
+  cargarK6();
+});
+
+// También permitir recargar con el botón
+document.getElementById("goCargar").addEventListener("click", function() {
+  cargarK6();
 });
 </script>
 </body>
