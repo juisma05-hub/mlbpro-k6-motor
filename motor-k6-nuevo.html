@@ -5,54 +5,57 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>K6 · Motor Nuevo</title>
 <style>
-:root { color-scheme: dark; }
-* { box-sizing:border-box; }
-body { margin:0; font-family:-apple-system,system-ui,sans-serif; background:#0d1117; color:#e6edf3; }
-header { padding:14px 16px; border-bottom:1px solid #30363d; }
-h1 { font-size:17px; margin:0; }
-main { padding:16px; max-width:900px; margin:0 auto; }
-.back { color:#79c0ff; text-decoration:none; font-size:14px; }
-.juego { background:#161b22; border:1px solid #30363d; border-radius:14px; padding:16px; margin-top:14px; }
-.matchup { font-size:18px; font-weight:800; }
-.estadio { font-size:13px; color:#8b949e; margin:3px 0; }
-.pitcher-bloque { margin-top:14px; padding-top:12px; border-top:1px solid #21262d; }
-.pitcher-bloque:first-of-type { border-top:none; margin-top:8px; padding-top:0; }
-.pitcher-info { display:flex; gap:12px; align-items:flex-start; }
-.pitcher-foto { width:48px; height:48px; border-radius:50%; background:#30363d; border:2px solid #444c56; object-fit:cover; flex-shrink:0; }
-.pitcher-detalles { flex:1; text-align:left; }
-.pitcher-nombre { font-size:14px; font-weight:700; margin:0; }
-.pitcher-equipo { font-size:11px; color:#8b949e; margin:2px 0 0; }
-.lineas { display:flex; gap:8px; margin:10px 0 2px; flex-wrap:wrap; }
-.lbox { flex:1; min-width:140px; background:#0d1117; border:1px solid #30363d; border-radius:10px; padding:10px; text-align:center; }
-.lbox .lbl { font-size:10px; color:#8b949e; letter-spacing:0.3px; }
-.lbox .val { font-size:20px; font-weight:800; margin-top:2px; color:#79c0ff; }
-.lbox.nuevo .val { color:#0d8a6e; }
-.lbox.mercado .val { color:#ffd60a; }
-.mercado-input { background:#0d1117; border:1px solid #30363d; border-radius:8px; color:#ffd60a; font-size:16px; font-weight:800; padding:8px; text-align:center; width:100%; }
-.mercado-input:focus { outline:none; border-color:#ffd60a; }
-.badge { display:inline-block; font-size:11px; font-weight:700; border-radius:6px; padding:3px 8px; margin-top:3px; }
-.badge.ok { background:#0d3a2c; color:#3fb950; }
-.badge.warn { background:#3a2f0d; color:#ffd60a; }
-.envivo-box { background:#2d0d0d; border:1px solid #ff453a; border-radius:10px; padding:12px; margin-top:10px; text-align:center; }
-.envivo-titulo { font-size:10px; color:#ff9d9d; font-weight:800; letter-spacing:0.5px; }
-.envivo-total { font-size:36px; font-weight:900; color:#fff; margin:8px 0; }
-.envivo-barra { background:#21262d; height:10px; border-radius:4px; margin:12px 0; overflow:hidden; }
-.envivo-detalle { font-size:10px; color:#ffb3ac; }
-.ultimos5 { margin-top:12px; border-top:1px solid #30363d; padding-top:8px; }
-.u5hdr { font-size:11px; color:#8b949e; font-weight:700; letter-spacing:0.5px; margin-bottom:6px; }
-.u5row { display:flex; justify-content:space-between; font-size:12px; padding:5px 0; border-bottom:1px solid #21262d; }
-.u5row span { color:#8b949e; }
-.u5row b { color:#e6edf3; }
-#console { margin-top:16px; background:#010409; border:1px solid #30363d; border-radius:8px; padding:12px; min-height:40px; max-height:15vh; overflow:auto; font-family:ui-monospace,monospace; font-size:11px; white-space:pre-wrap; }
+  :root { color-scheme: dark; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,system-ui,sans-serif; background:#0d1117; color:#e6edf3; }
+  header { padding:14px 16px; border-bottom:1px solid #30363d; }
+  h1 { font-size:17px; margin:0; }
+  main { padding:16px; max-width:900px; margin:0 auto; }
+  .back { color:#79c0ff; text-decoration:none; font-size:14px; }
+  .go { width:100%; border:0; border-radius:10px; padding:18px; font-size:17px; font-weight:800; color:#fff; background:#0d8a6e; cursor:pointer; margin-top:14px; }
+  .go:disabled { background:#30363d; color:#8b949e; }
+  .juego { background:#161b22; border:1px solid #30363d; border-radius:14px; padding:16px; margin-top:14px; }
+  .matchup { font-size:18px; font-weight:800; }
+  .estadio { font-size:13px; color:#8b949e; margin:3px 0; }
+  .pitcher-bloque { margin-top:14px; padding-top:12px; border-top:1px solid #21262d; }
+  .pitcher-bloque:first-of-type { border-top:none; margin-top:8px; padding-top:0; }
+  .pitcher-nombre { font-size:14px; font-weight:700; margin-bottom:6px; }
+  .pitcher-nombre .equipo { font-weight:500; color:#8b949e; font-size:12px; }
+  .lineas { display:flex; gap:8px; margin:8px 0 2px; }
+  .lbox { flex:1; background:#0d1117; border:1px solid #30363d; border-radius:10px; padding:10px; text-align:center; }
+  .lbox .lbl { font-size:10px; color:#8b949e; letter-spacing:0.3px; }
+  .lbox .val { font-size:20px; font-weight:800; margin-top:2px; color:#79c0ff; }
+  .lbox.nuevo .val { color:#0d8a6e; }
+  .lbox.mercado .val { color:#ffd60a; }
+  .lbox .sub { font-size:9px; color:#6e7681; margin-top:2px; }
+  .margen-chip { display:inline-block; font-size:11px; font-weight:800; border-radius:6px; padding:5px 10px; margin-top:8px; }
+  .margen-chip.OVER_CON_MARGEN { background:#0d3a2c; color:#3fb950; }
+  .margen-chip.LEAN_OVER { background:#0d3a2c; color:#7ee8a0; }
+  .margen-chip.PEGADO { background:#3a2f0d; color:#ffd60a; }
+  .margen-chip.LEAN_UNDER { background:#3a0d0d; color:#ff9d9d; }
+  .margen-chip.UNDER_CLARO { background:#3a0d0d; color:#ff453a; }
+  .badge { display:inline-block; font-size:11px; font-weight:700; border-radius:6px; padding:3px 8px; margin-top:8px; }
+  .badge.ok { background:#0d3a2c; color:#3fb950; }
+  .badge.warn { background:#3a2f0d; color:#ffd60a; }
+  .envivo-box { background:#2d0d0d; border:1px solid #ff453a; border-radius:10px; padding:10px; margin-top:10px; text-align:center; }
+  .envivo-titulo { font-size:10px; color:#ff9d9d; font-weight:800; letter-spacing:0.5px; }
+  .envivo-total { font-size:28px; font-weight:900; color:#fff; margin:4px 0; }
+  .envivo-detalle { font-size:10px; color:#ffb3ac; }
+  .ultimos5 { margin-top:12px; border-top:1px solid #30363d; padding-top:8px; }
+  .u5hdr { font-size:11px; color:#8b949e; font-weight:700; letter-spacing:0.5px; margin-bottom:6px; }
+  .u5row { display:flex; justify-content:space-between; font-size:12px; padding:5px 0; border-bottom:1px solid #21262d; }
+  .u5row span { color:#8b949e; }
+  .u5row b { color:#e6edf3; }
+  #console { margin-top:16px; background:#010409; border:1px solid #30363d; border-radius:8px; padding:12px; min-height:40px; font-family:ui-monospace,monospace; font-size:12px; white-space:pre-wrap; }
 </style>
 </head>
 <body>
 <header><h1>K6 · Motor Nuevo (DataPro)</h1></header>
 <main>
-<a class="back" href="juegos-hoy.html">← Volver a juegos</a>
-<button id="goCargar" class="go" style="width:100%; border:0; border-radius:10px; padding:18px; font-size:17px; font-weight:800; color:#fff; background:#0d8a6e; cursor:pointer; margin-top:14px;">VER K6 NUEVO DE HOY</button>
-<div id="lista"></div>
-<div id="console">Pulsa el botón.</div>
+  <a class="back" href="k6-test.html">← Volver a K6 · Ponches</a>
+  <button id="goCargar" class="go">VER K6 NUEVO DE HOY</button>
+  <div id="lista"></div>
+  <div id="console">Pulsa el botón.</div>
 </main>
 
 <script src="mlb-routes.js"></script>
@@ -61,181 +64,269 @@ main { padding:16px; max-width:900px; margin:0 auto; }
 <script src="park-factors.js"></script>
 <script src="jalar-linea-ponches.js"></script>
 <script src="jalar-ultimos5.js"></script>
-<script src="jalar-clima.js"></script>
-<script src="historial-viento.js"></script>
 <script src="motor-k6-nuevo.js"></script>
-<script src="jalar-ponches.js"></script>
 
 <script>
-var consoleEl = document.getElementById("console");
-var listaEl = document.getElementById("lista");
-function log(t){ var d=document.createElement("div"); d.textContent=t; consoleEl.appendChild(d); consoleEl.scrollTop=consoleEl.scrollHeight; }
+  var consoleEl = document.getElementById("console");
+  var listaEl = document.getElementById("lista");
+  function log(t){ var d=document.createElement("div"); d.textContent=t; consoleEl.appendChild(d); consoleEl.scrollTop=consoleEl.scrollHeight; }
 
-function hoyISO(){
-  var d=new Date(Date.now()-6*60*60*1000);
-  return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2);
-}
+  function hoyISO(){
+    var d=new Date(Date.now()-6*60*60*1000);
+    return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2);
+  }
 
-function fotoUrl(pitcherId){
-  return "https://img.mlbstatic.com/mlb-photos/image/upload/w_120,q_auto:best/v1/people/"+pitcherId+"/headshot/67/current";
-}
+  // ── UN pitcher, dentro de la tarjeta compartida del juego ──
+  // ── NUEVO: si el juego está en curso, trae los ponches REALES que ya
+  // lleva el pitcher en este mismo juego, y proyecta lo que falta según
+  // su ritmo de K6. Igual lógica que la app de referencia
+  // ("PROYECCIÓN FINAL EN VIVO: K actuales + K proy · IP restantes"). ──
+  async function jalarEnVivoPitcher(gamePk, pitcherId){
+    try {
+      var url = "https://statsapi.mlb.com/api/v1/game/" + gamePk + "/boxscore";
+      var resp = await fetch(MLB_ROUTES.WORKER_BASE + encodeURIComponent(url));
+      if (!resp.ok) return null;
+      var data = await resp.json();
+      var teams = ["away", "home"];
+      for (var t = 0; t < teams.length; t++) {
+        var players = data.teams && data.teams[teams[t]] ? data.teams[teams[t]].players : null;
+        if (!players) continue;
+        var key = "ID" + pitcherId;
+        if (players[key] && players[key].stats && players[key].stats.pitching) {
+          var st = players[key].stats.pitching;
+          var ipReal = ipRealDesdeBeisbol(st.inningsPitched);
+          var kActuales = st.strikeOuts !== undefined ? Number(st.strikeOuts) : null;
+          if (ipReal === null || kActuales === null) return null;
+          return {
+            en_juego: true,
+            ip_actual: ipReal,
+            ip_actual_texto: st.inningsPitched,
+            k_actual: kActuales,
+            sigue_en_juego: !players[key].stats.pitching.hasOwnProperty("gameFinished") || true
+          };
+        }
+      }
+      return null;
+    } catch(e) { return null; }
+  }
 
-function bloquePitcherHtml(equipoNombre, pitcherNombre, pitcherId, resultado, lineaMercado, enVivo, gamePk){
-  var k6Val = resultado && resultado.k6_proyectado ? resultado.k6_proyectado : "N/C";
-  var k6Badge = resultado && resultado.k6_proyectado
-    ? '<span class="badge ok">✓</span>'
-    : '<span class="badge warn">SIN DATOS</span>';
+  // Combina lo real (juego en curso) con la proyección del motor para lo
+  // que falta. Usa el mismo ritmo K/IP que ya calculó calcularK6 en base
+  // a los ultimos starts, aplicado solo a las entradas que faltan.
+  function proyeccionEnVivo(resultadoMotor, enVivo){
+    if (!enVivo || !enVivo.en_juego || resultadoMotor.k6_proyectado_preciso === null) return null;
+    var ritmoK6 = resultadoMotor.k6_proyectado_preciso; // K por cada 6 IP, ya con todos los factores
+    var ritmoPorIP = ritmoK6 / 6;
+    // IP restantes esperadas: hasta 6.0 IP (marco del K6), nunca negativo
+    var ipRestantes = Math.max(0, 6 - enVivo.ip_actual);
+    var kProyRestante = ritmoPorIP * ipRestantes;
+    var totalPreciso = enVivo.k_actual + kProyRestante;
+    return {
+      k_actual: enVivo.k_actual,
+      ip_actual_texto: enVivo.ip_actual_texto,
+      k_proy_restante: redondearParaMostrar(kProyRestante, 1),
+      ip_restantes: redondearParaMostrar(ipRestantes, 1),
+      total_en_vivo: redondearParaMostrar(totalPreciso, 1)
+    };
+  }
 
-  var fotoBg = pitcherId ? 'background-image: url(' + fotoUrl(pitcherId) + '); background-size: cover; background-position: center;' : '';
+  function bloquePitcherHtml(equipoNombre, pitcherNombre, resultado, lineaMercado, enVivo){
+    var k6Val, k6Badge;
+    if (resultado.k6_proyectado === null) {
+      k6Val = "N/C";
+      k6Badge = '<span class="badge warn">'+(resultado.motivo||"NO_CONFIRMADO")+'</span>';
+    } else {
+      // FIX: k6_proyectado ya viene redondeado a 1 decimal SOLO para mostrar
+      // (motor-k6-nuevo.js lo separa de k6_proyectado_preciso, que es el
+      // que se usa para comparar contra la linea, nunca este).
+      k6Val = resultado.k6_proyectado;
+      var nSinConfirmar = resultado.capas_sin_confirmar ? resultado.capas_sin_confirmar.length : 0;
+      k6Badge = nSinConfirmar === 0
+        ? '<span class="badge ok">CONFIRMADO</span>'
+        : '<span class="badge warn">'+nSinConfirmar+' capa(s) sin confirmar: '+resultado.capas_sin_confirmar.join(", ")+'</span>';
+    }
 
-  var enVivoHtml = '';
-  if (enVivo && enVivo.en_juego && resultado && resultado.k6_proyectado_preciso) {
-    enVivoHtml = '<div class="envivo-box" id="envivo-'+pitcherId+'">'+
-      '<div class="envivo-titulo">🔴 EN VIVO</div>'+
-      '<div class="envivo-total">-</div>'+
+    // NUEVO: caja "EN VIVO" — solo aparece si el juego ya está en curso y
+    // se pudo leer el boxscore real de este pitcher.
+    var enVivoHtml = '';
+    var proyVivo = proyeccionEnVivo(resultado, enVivo);
+    if (proyVivo) {
+      enVivoHtml = '<div class="envivo-box">'+
+        '<div class="envivo-titulo">🔴 PROYECCIÓN EN VIVO</div>'+
+        '<div class="envivo-total">'+proyVivo.total_en_vivo+'</div>'+
+        '<div class="envivo-detalle">'+proyVivo.k_actual+' K actuales + '+proyVivo.k_proy_restante+' proy · '+proyVivo.ip_restantes+' IP restantes ('+proyVivo.ip_actual_texto+' IP lanzadas)</div>'+
       '</div>';
-    setTimeout(function() {
-      if (typeof iniciarActualizacionEnVivo === "function") {
-        iniciarActualizacionEnVivo(pitcherId, gamePk, resultado.k6_proyectado_preciso);
-      }
-    }, 200);
-  }
-
-  var lineas = '<div class="lineas">'+
-    '<div class="lbox nuevo"><div class="lbl">K6 DATAPRO</div><div class="val">'+k6Val+'</div></div>'+
-    '<div class="lbox mercado"><div class="lbl">MI LÍNEA</div><input type="number" step="0.1" value="'+(lineaMercado||"")+'" class="mercado-input" /></div>'+
-    '</div>';
-
-  var u5html = '';
-  if (resultado && resultado.capas && resultado.capas.base_volumen) {
-    u5html = '<div class="ultimos5"><div class="u5hdr">ÚLTIMOS STARTS ('+resultado.n_starts_usados+' usados)</div>';
-    u5html += '<div class="u5row"><span>K6 promedio</span><b>'+resultado.base_k_real+'</b></div>';
-    if (resultado.capas.base_volumen.pitches_promedio_display) {
-      u5html += '<div class="u5row"><span>Pitcheos promedio</span><b>'+resultado.capas.base_volumen.pitches_promedio_display+'</b></div>';
-    }
-    u5html += '</div>';
-  }
-
-  return '<div class="pitcher-bloque">'+
-    '<div class="pitcher-info">'+
-      '<div class="pitcher-foto" style="'+fotoBg+'"></div>'+
-      '<div class="pitcher-detalles">'+
-        '<div class="pitcher-nombre">'+pitcherNombre+'</div>'+
-        '<div class="pitcher-equipo">'+equipoNombre+'</div>'+
-      '</div>'+
-    '</div>'+
-    lineas + k6Badge + enVivoHtml + u5html +
-    '</div>';
-}
-
-document.getElementById("goCargar").addEventListener("click", async function(){
-  var btn = this; btn.disabled = true; btn.textContent = "TRABAJANDO…";
-  consoleEl.textContent = ""; listaEl.innerHTML = "";
-
-  try {
-    log("Trayendo líneas...");
-    var lineasCache = null;
-    try { lineasCache = await jalarLineasPonches(log); }
-    catch (el) { log("Líneas: " + (el && el.message ? el.message : el)); }
-
-    log("Trayendo juegos...");
-    var hoy = hoyISO();
-    var mlbUrl = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date="+hoy+"&hydrate=probablePitcher";
-    var resp = await fetch(MLB_ROUTES.WORKER_BASE + encodeURIComponent(mlbUrl));
-    if (!resp.ok) throw new Error("HTTP " + resp.status);
-    var data = await resp.json();
-    var games = (data.dates && data.dates[0]) ? data.dates[0].games : [];
-    log("Juegos: " + games.length);
-
-    var html = "";
-    for (var i = 0; i < games.length; i++) {
-      var g = games[i];
-      var away = (g.teams && g.teams.away && g.teams.away.team) ? g.teams.away.team.name : "?";
-      var home = (g.teams && g.teams.home && g.teams.home.team) ? g.teams.home.team.name : "?";
-      var venue = g.venue ? g.venue.name : "";
-      var pAwayId = (g.teams && g.teams.away && g.teams.away.probablePitcher) ? g.teams.away.probablePitcher.id : null;
-      var pAwayName = (g.teams && g.teams.away && g.teams.away.probablePitcher) ? g.teams.away.probablePitcher.fullName : "TBD";
-      var pHomeId = (g.teams && g.teams.home && g.teams.home.probablePitcher) ? g.teams.home.probablePitcher.id : null;
-      var pHomeName = (g.teams && g.teams.home && g.teams.home.probablePitcher) ? g.teams.home.probablePitcher.fullName : "TBD";
-
-      var juegoEnVivo = g.status && g.status.abstractGameState === "Live";
-
-      var lineaAway = lineasCache ? lineaPonchesBuscarPitcher(pAwayName) : null;
-      var lineMercadoAway = (lineaAway && lineaAway.total_k) ? lineaAway.total_k : null;
-      var lineaHome = lineasCache ? lineaPonchesBuscarPitcher(pHomeName) : null;
-      var lineMercadoHome = (lineaHome && lineaHome.total_k) ? lineaHome.total_k : null;
-
-      var bloqueAway, bloqueHome;
-      
-      if (pAwayId) {
-        try {
-          log("Leyendo " + pAwayName);
-          var u5Away = await jalarUltimos5(pAwayId, new Date().getFullYear());
-          var resAway = calcularK6({
-            playerId: pAwayId,
-            juegosRecientes: u5Away.juegos || [],
-            arsenalMaster: (typeof ARSENAL_MASTER_2026 !== "undefined") ? ARSENAL_MASTER_2026 : {},
-            nombreEquipoRival: home,
-            nombreUmpireNormalizado: null,
-            umpiresMaster: (typeof UMPIRES_MASTER_2026 !== "undefined") ? UMPIRES_MASTER_2026 : {},
-            nombreCatcher: null,
-            catcherData: null,
-            nombreVenue: venue,
-            parkFactors: (typeof PARK_FACTORS_2026 !== "undefined") ? PARK_FACTORS_2026 : {},
-            climaData: null
-          });
-          var enVivoAway = juegoEnVivo ? await jalarEnVivoPitcher(g.gamePk, pAwayId) : null;
-          bloqueAway = bloquePitcherHtml(away, pAwayName, pAwayId, resAway, lineMercadoAway, enVivoAway, g.gamePk);
-        } catch (e) {
-          log("Error " + pAwayName + ": " + e.message);
-          bloqueAway = bloquePitcherHtml(away, pAwayName, pAwayId, null, lineMercadoAway, null, g.gamePk);
-        }
-      } else {
-        bloqueAway = bloquePitcherHtml(away, "TBD", null, null, lineMercadoAway, null, g.gamePk);
-      }
-
-      if (pHomeId) {
-        try {
-          log("Leyendo " + pHomeName);
-          var u5Home = await jalarUltimos5(pHomeId, new Date().getFullYear());
-          var resHome = calcularK6({
-            playerId: pHomeId,
-            juegosRecientes: u5Home.juegos || [],
-            arsenalMaster: (typeof ARSENAL_MASTER_2026 !== "undefined") ? ARSENAL_MASTER_2026 : {},
-            nombreEquipoRival: away,
-            nombreUmpireNormalizado: null,
-            umpiresMaster: (typeof UMPIRES_MASTER_2026 !== "undefined") ? UMPIRES_MASTER_2026 : {},
-            nombreCatcher: null,
-            catcherData: null,
-            nombreVenue: venue,
-            parkFactors: (typeof PARK_FACTORS_2026 !== "undefined") ? PARK_FACTORS_2026 : {},
-            climaData: null
-          });
-          var enVivoHome = juegoEnVivo ? await jalarEnVivoPitcher(g.gamePk, pHomeId) : null;
-          bloqueHome = bloquePitcherHtml(home, pHomeName, pHomeId, resHome, lineMercadoHome, enVivoHome, g.gamePk);
-        } catch (e) {
-          log("Error " + pHomeName + ": " + e.message);
-          bloqueHome = bloquePitcherHtml(home, pHomeName, pHomeId, null, lineMercadoHome, null, g.gamePk);
-        }
-      } else {
-        bloqueHome = bloquePitcherHtml(home, "TBD", null, null, lineMercadoHome, null, g.gamePk);
-      }
-
-      html += '<div class="juego">'+
-        '<div class="matchup">'+away+' @ '+home+'</div>'+
-        '<div class="estadio">'+venue+'</div>'+
-        bloqueAway + bloqueHome +
-        '</div>';
     }
 
-    listaEl.innerHTML = html;
-    log("LISTO");
-  } catch (e) {
-    log("ERROR: " + e.message);
-  } finally {
-    btn.disabled = false; btn.textContent = "VER K6 NUEVO DE HOY";
+    var lineas = '<div class="lineas">'+
+      '<div class="lbox nuevo"><div class="lbl">K6 DATAPRO (nuevo)</div><div class="val">'+k6Val+'</div></div>'+
+      '<div class="lbox mercado"><div class="lbl">LÍNEA MERCADO</div><div class="val">'+(lineaMercado!==null?lineaMercado:"N/C")+'</div></div>'+
+    '</div>';
+
+    // NUEVO: comparacion con margen (con el numero PRECISO, no el redondeado)
+    var margenHtml = '';
+    if (resultado.k6_proyectado_preciso !== null && lineaMercado !== null && typeof compararConLinea === "function") {
+      var comp = compararConLinea(resultado.k6_proyectado_preciso, lineaMercado);
+      if (comp.lectura !== "NO_CONFIRMADO") {
+        margenHtml = '<div class="margen-chip '+comp.lectura+'">'+comp.texto+' ('+(comp.diferencia_display>=0?'+':'')+comp.diferencia_display+')</div>';
+      }
+    }
+
+    var muestraWarn = '';
+    if (resultado.muestra_status === "MUESTRA_PEQUENA") {
+      muestraWarn = '<div><span class="badge warn">MUESTRA PEQUEÑA: solo '+resultado.n_starts_usados+' start(s) calificado(s) — leer con mucha cautela</span></div>';
+    }
+
+    var u5html = '';
+    if (resultado.capas && resultado.capas.base_volumen && resultado.capas.base_volumen.status !== "NO_CONFIRMADO") {
+      var bv = resultado.capas.base_volumen;
+      u5html = '<div class="ultimos5"><div class="u5hdr">ÚLTIMOS STARTS (K6 escalado por start — '+
+        resultado.n_starts_usados+' usados)</div>';
+      u5html += '<div class="u5row"><span>K6 promedio (escalado K×6/IP)</span><b>'+resultado.base_k_real+'</b></div>';
+      // FIX: usar los campos _display (ya redondeados para leer), no los
+      // crudos sin redondear — antes salia "15.833333333333334".
+      if (bv.pitches_promedio_display !== null) {
+        u5html += '<div class="u5row"><span>Pitcheos promedio</span><b>'+bv.pitches_promedio_display+'</b></div>';
+      }
+      if (bv.pitches_por_k_display !== null) {
+        u5html += '<div class="u5row"><span>Pitcheos por K</span><b>'+bv.pitches_por_k_display+'</b></div>';
+      }
+      u5html += '</div>';
+    }
+
+    return '<div class="pitcher-bloque">'+
+      '<div class="pitcher-nombre">⚾ '+pitcherNombre+' <span class="equipo">('+equipoNombre+')</span></div>'+
+      lineas + k6Badge + margenHtml + muestraWarn + enVivoHtml + u5html +
+    '</div>';
   }
-});
+
+  // ── LA tarjeta del juego, con los 2 pitchers juntos adentro ──
+  function tarjetaJuegoHtml(matchup, venue, bloqueAwayHtml, bloqueHomeHtml){
+    return '<div class="juego">'+
+      '<div class="matchup">'+matchup+'</div>'+
+      '<div class="estadio">'+venue+'</div>'+
+      bloqueAwayHtml + bloqueHomeHtml +
+    '</div>';
+  }
+
+  document.getElementById("goCargar").addEventListener("click", async function(){
+    var btn = this; btn.disabled = true; btn.textContent = "TRABAJANDO…";
+    consoleEl.textContent = ""; listaEl.innerHTML = "";
+    try {
+      log("Trayendo líneas de ponches...");
+      var lineasCache = null;
+      try { lineasCache = await jalarLineasPonches(log); }
+      catch (el) { log("AVISO líneas: " + (el && el.message ? el.message : el)); lineasCache = null; }
+
+      log("Trayendo juegos de hoy...");
+      var hoy = hoyISO();
+      var mlbUrl = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date="+hoy+"&hydrate=probablePitcher";
+      var resp = await fetch(MLB_ROUTES.WORKER_BASE + encodeURIComponent(mlbUrl));
+      if (!resp.ok) throw new Error("Schedule HTTP " + resp.status);
+      var data = await resp.json();
+      var games = (data.dates && data.dates[0]) ? data.dates[0].games : [];
+      log("Juegos hoy: " + games.length);
+      if (games.length === 0) { log("No hay juegos hoy."); return; }
+
+      var html = "";
+      for (var i = 0; i < games.length; i++) {
+        var g = games[i];
+        var venue = g.venue ? g.venue.name : "";
+        var away = (g.teams && g.teams.away && g.teams.away.team) ? g.teams.away.team.name : "?";
+        var home = (g.teams && g.teams.home && g.teams.home.team) ? g.teams.home.team.name : "?";
+        var pAwayId = (g.teams && g.teams.away && g.teams.away.probablePitcher) ? g.teams.away.probablePitcher.id : null;
+        var pAwayName = (g.teams && g.teams.away && g.teams.away.probablePitcher) ? g.teams.away.probablePitcher.fullName : "TBD";
+        var pHomeId = (g.teams && g.teams.home && g.teams.home.probablePitcher) ? g.teams.home.probablePitcher.id : null;
+        var pHomeName = (g.teams && g.teams.home && g.teams.home.probablePitcher) ? g.teams.home.probablePitcher.fullName : "TBD";
+
+        // NUEVO: si el juego esta en curso, se busca el boxscore en vivo
+        // para sacar los K reales que ya lleva cada pitcher.
+        var estadoJuego = g.status && g.status.abstractGameState ? g.status.abstractGameState : "";
+        var juegoEnVivo = estadoJuego === "Live";
+        var enVivoAway = null, enVivoHome = null;
+        if (juegoEnVivo && g.gamePk) {
+          if (pAwayId) enVivoAway = await jalarEnVivoPitcher(g.gamePk, pAwayId);
+          if (pHomeId) enVivoHome = await jalarEnVivoPitcher(g.gamePk, pHomeId);
+        }
+
+        // --- Pitcher visitante (away) enfrenta al lineup de casa (home) ---
+        var lineaObjAway = lineasCache ? lineaPonchesBuscarPitcher(pAwayName) : null;
+        var lineaMercadoAway = (lineaObjAway && lineaObjAway.total_k !== null && lineaObjAway.total_k !== undefined) ? lineaObjAway.total_k : null;
+        log("Línea K de mercado para " + pAwayName + ": " + (lineaMercadoAway !== null ? lineaMercadoAway : "N/C"));
+
+        var bloqueAway;
+        if (!pAwayId) {
+          bloqueAway = bloquePitcherHtml(away, "TBD", {k6_proyectado:null, k6_proyectado_preciso:null, motivo:"SIN_PITCHER_PROBABLE"}, lineaMercadoAway, null);
+        } else {
+          try {
+            log("Procesando " + pAwayName + "...");
+            var u5Away = await jalarUltimos5(pAwayId, new Date().getFullYear());
+            var resultadoAway = calcularK6({
+              playerId: pAwayId,
+              juegosRecientes: u5Away.juegos || [],
+              arsenalMaster: (typeof ARSENAL_MASTER_2026 !== "undefined") ? ARSENAL_MASTER_2026 : {},
+              nombreEquipoRival: home,
+              nombreUmpireNormalizado: null,
+              umpiresMaster: (typeof UMPIRES_MASTER_2026 !== "undefined") ? UMPIRES_MASTER_2026 : {},
+              nombreCatcher: null,
+              catcherData: null,
+              nombreVenue: venue,
+              parkFactors: (typeof PARK_FACTORS_2026 !== "undefined") ? PARK_FACTORS_2026 : {},
+              climaData: null
+            });
+            bloqueAway = bloquePitcherHtml(away, pAwayName, resultadoAway, lineaMercadoAway, enVivoAway);
+          } catch (eAway) {
+            log("ERROR procesando " + pAwayName + ": " + (eAway && eAway.message ? eAway.message : eAway));
+            bloqueAway = bloquePitcherHtml(away, pAwayName, {k6_proyectado:null, k6_proyectado_preciso:null, motivo:"ERROR_AL_PROCESAR"}, lineaMercadoAway, null);
+          }
+        }
+
+        // --- Pitcher de casa (home) enfrenta al lineup visitante (away) ---
+        var lineaObjHome = lineasCache ? lineaPonchesBuscarPitcher(pHomeName) : null;
+        var lineaMercadoHome = (lineaObjHome && lineaObjHome.total_k !== null && lineaObjHome.total_k !== undefined) ? lineaObjHome.total_k : null;
+        log("Línea K de mercado para " + pHomeName + ": " + (lineaMercadoHome !== null ? lineaMercadoHome : "N/C"));
+
+        var bloqueHome;
+        if (!pHomeId) {
+          bloqueHome = bloquePitcherHtml(home, "TBD", {k6_proyectado:null, k6_proyectado_preciso:null, motivo:"SIN_PITCHER_PROBABLE"}, lineaMercadoHome, null);
+        } else {
+          try {
+            log("Procesando " + pHomeName + "...");
+            var u5Home = await jalarUltimos5(pHomeId, new Date().getFullYear());
+            var resultadoHome = calcularK6({
+              playerId: pHomeId,
+              juegosRecientes: u5Home.juegos || [],
+              arsenalMaster: (typeof ARSENAL_MASTER_2026 !== "undefined") ? ARSENAL_MASTER_2026 : {},
+              nombreEquipoRival: away,
+              nombreUmpireNormalizado: null,
+              umpiresMaster: (typeof UMPIRES_MASTER_2026 !== "undefined") ? UMPIRES_MASTER_2026 : {},
+              nombreCatcher: null,
+              catcherData: null,
+              nombreVenue: venue,
+              parkFactors: (typeof PARK_FACTORS_2026 !== "undefined") ? PARK_FACTORS_2026 : {},
+              climaData: null
+            });
+            bloqueHome = bloquePitcherHtml(home, pHomeName, resultadoHome, lineaMercadoHome, enVivoHome);
+          } catch (eHome) {
+            log("ERROR procesando " + pHomeName + ": " + (eHome && eHome.message ? eHome.message : eHome));
+            bloqueHome = bloquePitcherHtml(home, pHomeName, {k6_proyectado:null, k6_proyectado_preciso:null, motivo:"ERROR_AL_PROCESAR"}, lineaMercadoHome, null);
+          }
+        }
+
+        // FIX: los dos pitchers del mismo juego van juntos en UNA tarjeta,
+        // no en dos tarjetas separadas repitiendo el mismo matchup/parque.
+        html += tarjetaJuegoHtml(away+" @ "+home, venue, bloqueAway, bloqueHome);
+
+        // RENDER PROGRESIVO: se pinta despues de cada juego completo.
+        listaEl.innerHTML = html;
+      }
+      log("LISTO.");
+    } catch (e) {
+      log("ERROR: " + (e && e.message ? e.message : e));
+    } finally {
+      btn.disabled = false; btn.textContent = "VER K6 NUEVO DE HOY";
+    }
+  });
 </script>
 </body>
 </html>
