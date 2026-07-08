@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MLBPro · Juegos de Hoy</title>
+<style>
+:root { color-scheme: dark; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:-apple-system,system-ui,sans-serif; background:#0d1117; color:#e6edf3; }
+header { padding:14px 16px; border-bottom:1px solid #30363d; }
+h1 { font-size:17px; margin:0; }
+main { padding:16px; max-width:900px; margin:0 auto; }
+.back { color:#79c0ff; text-decoration:none; font-size:14px; margin-bottom:16px; display:block; }
+.juego-card { background:#161b22; border:1px solid #30363d; border-radius:14px; padding:16px; margin-top:14px; cursor:pointer; transition:all 0.2s ease; }
+.juego-card:hover { border-color:#79c0ff; background:#0d1117; }
+.juego-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.juego-match { font-size:16px; font-weight:800; }
+.juego-estado { font-size:11px; font-weight:700; padding:4px 8px; border-radius:4px; background:#0d3a2c; color:#3fb950; }
+.juego-estado.scheduled { background:#3a2f0d; color:#ffd60a; }
+.pitchers { display:flex; gap:16px; justify-content:space-between; }
+.pitcher-card { flex:1; background:#0d1117; border:1px solid #30363d; border-radius:10px; padding:12px; text-align:center; }
+.pitcher-foto { width:48px; height:48px; border-radius:50%; background:#30363d; margin:0 auto 8px; border:2px solid #444c56; object-fit:cover; }
+.pitcher-nombre { font-size:13px; font-weight:700; margin:0; }
+.pitcher-equipo { font-size:10px; color:#8b949e; margin:2px 0 0; }
+.pitcher-k { font-size:18px; font-weight:800; color:#79c0ff; margin-top:8px; }
+.score-display { font-size:28px; font-weight:900; color:#ffd60a; text-align:center; padding:0 16px; }
+.venue { font-size:11px; color:#8b949e; margin-top:12px; text-align:center; }
+#console { margin-top:16px; background:#010409; border:1px solid #30363d; border-radius:8px; padding:12px; min-height:40px; max-height:10vh; overflow:auto; font-family:ui-monospace,monospace; font-size:11px; white-space:pre-wrap; }
+</style>
+</head>
+<body>
+<header><h1>MLBPro · Juegos de Hoy</h1></header>
+<main>
+<a class="back" href="index.html">← Volver al inicio</a>
+<div id="lista"></div>
+<div id="console">Cargando juegos...</div>
+</main>
+
+<script src="mlb-routes.js"></script>
+<script src="jalar-linea-ponches.js"></script>
+<script src="jalar-ultimos5.js"></script>
+<script src="motor-k6-nuevo.js"></script>
+
+<script>
+var consoleEl = document.getElementById("console");
+var listaEl = document.getElementById("lista");
+function log(t){ var d=document.createElement("div"); d.textContent=t; consoleEl.appendChild(d); consoleEl.scrollTop=consoleEl.scrollHeight; }
+
+function hoyISO(){
+  var d=new Date(Date.now()-6*60*60*1000);
+  return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2);
+}
+
+function fotoUrl(pitcherId){
+  return "https://img.mlbstatic.com/mlb-photos/image/upload/w_120,q_auto:best/v1/people/"+pitcherId+"/headshot/67/current";
+}
+
+async function cargarJuegos() {
+  consoleEl.textContent = "";
+  listaEl.innerHTML = "";
+  
+  try {
+    log("Trayendo juegos de hoy...");
+    var hoy = hoyISO();
+    var mlbUrl = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date="+hoy+"&hydrate=probablePitcher,liveData";
+    var resp = await fetch(MLB_ROUTES.WORKER_BASE + encodeURIComponent(mlbUrl));
+    if (!resp.ok) throw new Error("Schedule HTTP " + resp.status);
+    var data = await resp.json();
+    var games = (data.dates && data.dates[0]) ? data.dates[0].games : [];
+    log("Juegos hoy: " + games.length);
+    
+    if (games.length === 0) { log("No hay juegos hoy."); return; }
+
+    var html = "";
+    for (var i = 0; i < games.length; i++) {
+      var g = games[i];
+      var estado = g.status && g.status.abstractGameState ? g.status.abstractGameState : "Scheduled";
+      var estadoClass = estado === "Live" ? "" : "scheduled";
+      var estadoTxt = estado === "Live" ? "🔴 EN VIVO" : "Próximamente";
+      
+      var away = (g.teams && g.teams.away && g.teams.away.team) ? g.teams.away.team.name : "?";
+      var home = (g.teams && g.teams.home && g.teams.home.team) ? g.teams.home.team.name : "?";
+      var venue = g.venue ? g.venue.name : "";
+      
+      var pAwayId = (g.teams && g.teams.away && g.teams.away.probablePitcher) ? g.teams.away.probablePitcher.id : null;
+      var pAwayName = (g.teams && g.teams.away && g.teams.away.probablePitcher) ? g.teams.away.probablePitcher.fullName : "TBD";
+      var pHomeId = (g.teams && g.teams.home && g.teams.home.probablePitcher) ? g.teams.home.probablePitcher.id : null;
+      var pHomeName = (g.teams && g.teams.home && g.teams.home.probablePitcher) ? g.teams.home.probablePitcher.fullName : "TBD";
+      
+      // Score en vivo
+      var scoreAway = 0, scoreHome = 0;
+      if (g.liveData && g.liveData.linescore) {
+        scoreAway = g.liveData.linescore.teams && g.liveData.linescore.teams.away ? g.liveData.linescore.teams.away : 0;
+        scoreHome = g.liveData.linescore.teams && g.liveData.linescore.teams.home ? g.liveData.linescore.teams.home : 0;
+      }
+      
+      var fotoBgAway = pAwayId ? 'background-image: url(' + fotoUrl(pAwayId) + '); background-size: cover; background-position: center;' : '';
+      var fotoBgHome = pHomeId ? 'background-image: url(' + fotoUrl(pHomeId) + '); background-size: cover; background-position: center;' : '';
+      
+      html += '<div class="juego-card" onclick="ir_a_motor(' + g.gamePk + ')">' +
+        '<div class="juego-header">' +
+          '<div class="juego-match">' + away + ' @ ' + home + '</div>' +
+          '<div class="juego-estado '+estadoClass+'">' + estadoTxt + '</div>' +
+        '</div>' +
+        '<div style="display:flex; gap:16px; align-items:center; justify-content:space-between;">' +
+          '<div class="pitcher-card">' +
+            '<div class="pitcher-foto" style="'+fotoBgAway+'"></div>' +
+            '<div class="pitcher-nombre">' + pAwayName + '</div>' +
+            '<div class="pitcher-equipo">' + away + '</div>' +
+          '</div>' +
+          '<div class="score-display">' + scoreAway + ' - ' + scoreHome + '</div>' +
+          '<div class="pitcher-card">' +
+            '<div class="pitcher-foto" style="'+fotoBgHome+'"></div>' +
+            '<div class="pitcher-nombre">' + pHomeName + '</div>' +
+            '<div class="pitcher-equipo">' + home + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="venue">⚾ ' + venue + '</div>' +
+        '</div>';
+    }
+    
+    listaEl.innerHTML = html;
+    log("Juegos cargados. Clickea en un juego para ver detalles.");
+  } catch (e) {
+    log("ERROR: " + (e && e.message ? e.message : e));
+  }
+}
+
+function ir_a_motor(gamePk) {
+  window.location.href = "motor-k6-nuevo.html?gamePk=" + gamePk;
+}
+
+// Cargar al abrir
+cargarJuegos();
+</script>
+</body>
+</html>
