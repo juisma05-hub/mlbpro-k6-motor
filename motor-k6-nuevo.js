@@ -46,10 +46,29 @@ function ipRealDesdeBeisbol(ipString) {
   return enteros + (outs / 3);
 }
 
+// Valida que `v` sea un número real usable: rechaza null, undefined,
+// "", NaN, Infinity, -Infinity y booleanos. Number(null)===0,
+// Number("")===0 y Number(true)===1, así que no basta con
+// Number.isFinite(Number(v)) a secas — hay que descartar esos casos
+// ANTES de convertir. CRITERIO ÚNICO en todo el motor: siempre se llama
+// esNumeroReal(valor_crudo) primero, y Number(valor_crudo) recién
+// después de que la validación pasó — nunca al revés. Convertir antes
+// de validar anula la protección: Number(true)===1 y esNumeroReal(1)
+// ya no puede saber que el original era un booleano.
+// Se usa en redondearParaMostrar(), compararConLinea(), en las
+// conversiones de K/IP/pitcheos, y en los factores externos
+// (zone_factor, so_factor, usage, whiff, temperatura, viento).
+function esNumeroReal(v) {
+  if (v === null || v === undefined || v === "") return false;
+  if (typeof v === "boolean") return false;
+  if (typeof v === "string" && v.trim() === "") return false;
+  return Number.isFinite(Number(v));
+}
+
 // Redondeo SOLO para mostrar — nunca se usa el resultado de esta funcion
 // para seguir calculando con el, solo para pintar en pantalla.
 function redondearParaMostrar(numero, decimales) {
-  if (numero === null || numero === undefined || isNaN(numero)) return null;
+  if (!esNumeroReal(numero)) return null;
   const factor = Math.pow(10, decimales);
   return Math.round(numero * factor) / factor;
 }
@@ -60,8 +79,8 @@ function redondearParaMostrar(numero, decimales) {
 function calcularBaseYVolumen(juegos) {
   const valuos = juegos.filter(function(j) {
     const ipReal = ipRealDesdeBeisbol(j.innings_pitched);
-    const k = Number(j.strikeouts);
-    return ipReal !== null && ipReal > 0 && !isNaN(k);
+    if (!esNumeroReal(j.strikeouts)) return false;
+    return ipReal !== null && ipReal > 0;
   });
 
   if (valuos.length === 0) {
@@ -87,7 +106,7 @@ function calcularBaseYVolumen(juegos) {
     sumaK6Escalado += k6Start;
     sumaIP += ipReal;
     sumaKreal += k;
-    if (j.pitches !== null && j.pitches !== undefined && !isNaN(j.pitches)) {
+    if (esNumeroReal(j.pitches)) {
       sumaPitches += Number(j.pitches);
       nPitches++;
     }
@@ -117,7 +136,14 @@ function calcularBaseYVolumen(juegos) {
 }
 
 // ============================================================
-// CAPA 3: ARSENAL_K_POWER (precision completa)
+// CAPA 3: ARSENAL_K_POWER
+// Referencia de whiff de liga (25%) todavía NO está validada con datos
+// reales — mientras tanto esta capa es SOLO INFORMATIVA: se calcula y
+// se expone whiff_ponderado para lectura humana, pero el factor que
+// entra en la fórmula del K6 se fuerza a 1.0 (neutro) y la capa queda
+// NO_CONFIRMADO (entra en capas_sin_confirmar sin tocar esa lógica en
+// calcularK6, que ya trata cualquier status distinto de "OK" /
+// "OK_CON_REFERENCIA_APROXIMADA" como no confirmado).
 // ============================================================
 function calcularArsenalFactor(playerId, arsenalMaster) {
   const datos = arsenalMaster[String(playerId)];
@@ -127,10 +153,11 @@ function calcularArsenalFactor(playerId, arsenalMaster) {
 
   let sumaUsage = 0, sumaWhiffPonderado = 0;
   datos.arsenal.forEach(function(p) {
-    if (p.whiff !== null && p.whiff !== undefined && !isNaN(p.whiff) && p.usage) {
-      sumaUsage += p.usage;
-      sumaWhiffPonderado += p.usage * p.whiff;
-    }
+    if (!esNumeroReal(p.whiff) || !esNumeroReal(p.usage)) return;
+    const usage = Number(p.usage);
+    const whiff = Number(p.whiff);
+    sumaUsage += usage;
+    sumaWhiffPonderado += usage * whiff;
   });
 
   if (sumaUsage === 0) {
@@ -138,16 +165,14 @@ function calcularArsenalFactor(playerId, arsenalMaster) {
   }
 
   const whiffPonderado = sumaWhiffPonderado / sumaUsage;
-  const REFERENCIA_WHIFF_LIGA_APROX = 25.0;
-  const factor = whiffPonderado / REFERENCIA_WHIFF_LIGA_APROX; // sin redondear
 
   return {
-    factor: factor,
-    factor_display: redondearParaMostrar(factor, 3),
+    factor: 1.0,
+    factor_display: 1.0,
     whiff_ponderado: whiffPonderado,
     whiff_ponderado_display: redondearParaMostrar(whiffPonderado, 2),
-    status: "OK_CON_REFERENCIA_APROXIMADA",
-    motivo: "Referencia de liga (25%) es aproximacion, no dato verificado — pista para revisar despues"
+    status: "NO_CONFIRMADO",
+    motivo: "Referencia de liga (25%) no validada con datos reales todavia — factor neutro (1.0) hasta confirmar; whiff_ponderado queda solo como informacion"
   };
 }
 
@@ -160,19 +185,20 @@ function calcularLineupFactor(pitchesPorKPitcher, nombreEquipoRival) {
   if (!datosEquipo) {
     return { factor: 1.0, factor_display: 1.0, status: "NO_CONFIRMADO", motivo: "EQUIPO_RIVAL_NO_VERIFICADO_AUN_FALTAN_27_EQUIPOS" };
   }
-  if (pitchesPorKPitcher === null || pitchesPorKPitcher === undefined) {
+  if (!esNumeroReal(pitchesPorKPitcher)) {
     return { factor: 1.0, factor_display: 1.0, status: "NO_CONFIRMADO", motivo: "PITCHER_SIN_PITCHES_POR_K_CALCULADO" };
   }
+  const pitchesPorKPitcherNum = Number(pitchesPorKPitcher);
 
   const factorEquipo = LEAGUE_AVG_PITCHES_PER_K / datosEquipo.pitches_per_k;
-  const factorPitcher = LEAGUE_AVG_PITCHES_PER_K / pitchesPorKPitcher;
+  const factorPitcher = LEAGUE_AVG_PITCHES_PER_K / pitchesPorKPitcherNum;
   const factor = Math.sqrt(factorEquipo * factorPitcher); // sin redondear
 
   return {
     factor: factor,
     factor_display: redondearParaMostrar(factor, 3),
     pitches_por_k_equipo: datosEquipo.pitches_per_k,
-    pitches_por_k_pitcher: pitchesPorKPitcher,
+    pitches_por_k_pitcher: pitchesPorKPitcherNum,
     liga_referencia: LEAGUE_AVG_PITCHES_PER_K,
     status: "OK",
     motivo: null
@@ -187,9 +213,13 @@ function calcularUmpireFactor(nombreUmpireNormalizado, umpiresMaster) {
   if (!datos) {
     return { factor: 1.0, factor_display: 1.0, status: "NO_CONFIRMADO", motivo: "UMPIRE_NO_ENCONTRADO_EN_TABLA_77" };
   }
+  if (!esNumeroReal(datos.zone_factor)) {
+    return { factor: 1.0, factor_display: 1.0, status: "NO_CONFIRMADO", motivo: "UMPIRE_ZONE_FACTOR_INVALIDO" };
+  }
+  const zoneFactor = Number(datos.zone_factor);
   return {
-    factor: datos.zone_factor,
-    factor_display: redondearParaMostrar(datos.zone_factor, 3),
+    factor: zoneFactor,
+    factor_display: redondearParaMostrar(zoneFactor, 3),
     k_tier: datos.k_tier,
     k_per_game: datos.k_per_game,
     status: "OK",
@@ -217,11 +247,15 @@ function calcularParkFactor(nombreVenue, parkFactors) {
   if (!datos) {
     return { factor: 1.0, factor_display: 1.0, status: "NO_CONFIRMADO", motivo: "PARQUE_NO_ENCONTRADO_EN_TABLA_29" };
   }
-  const factor = datos.so_factor / 100; // sin redondear
+  if (!esNumeroReal(datos.so_factor)) {
+    return { factor: 1.0, factor_display: 1.0, status: "NO_CONFIRMADO", motivo: "PARK_SO_FACTOR_INVALIDO" };
+  }
+  const soFactor = Number(datos.so_factor);
+  const factor = soFactor / 100; // sin redondear
   return {
     factor: factor,
     factor_display: redondearParaMostrar(factor, 3),
-    so_factor_raw: datos.so_factor,
+    so_factor_raw: soFactor,
     category: datos.category,
     status: "OK",
     motivo: null
@@ -229,10 +263,15 @@ function calcularParkFactor(nombreVenue, parkFactors) {
 }
 
 // ============================================================
-// CAPA 8: CLIMATE_FACTOR (heuristica, precision completa)
+// CAPA 8: CLIMATE_FACTOR
+// Heuristica SIN backtest aprobado todavia — esta capa es SOLO
+// INFORMATIVA: se calculan las notas de que hubiera sugerido la
+// heuristica (frio/calor/viento), pero el factor que entra en la
+// formula del K6 se fuerza a 1.0 (neutro) y la capa queda NO_CONFIRMADO
+// (misma logica de exclusion que ya usa calcularK6 para ARSENAL).
 // ============================================================
 function calcularClimaFactor(climaData) {
-  if (!climaData || climaData.temperature_f === "" || typeof climaData.temperature_f !== "number") {
+  if (!climaData || !esNumeroReal(climaData.temperature_f)) {
     return { factor: 1.0, factor_display: 1.0, status: "NO_CONFIRMADO", motivo: "SIN_DATO_CLIMA_VALIDO" };
   }
 
@@ -240,25 +279,25 @@ function calcularClimaFactor(climaData) {
     return { factor: 1.0, factor_display: 1.0, status: "ROOF_CERRADO_NEUTRO", motivo: null };
   }
 
-  let factor = 1.0;
   const notas = [];
 
-  const temp = climaData.temperature_f;
+  const temp = Number(climaData.temperature_f);
   const windDir = (climaData.wind_dir || "").toUpperCase();
-  const windSpeed = typeof climaData.windspeed_mph === "number" ? climaData.windspeed_mph : 0;
+  const windSpeed = esNumeroReal(climaData.windspeed_mph) ? Number(climaData.windspeed_mph) : 0;
 
-  if (temp < 60) { factor += 0.03; notas.push("frio<60F:+0.03"); }
-  if (temp > 85) { factor -= 0.03; notas.push("calor>85F:-0.03"); }
-
-  if (windDir.includes("IN") && windSpeed >= 8) { factor += 0.03; notas.push("vientoIN>=8mph:+0.03"); }
-  if (windDir.includes("OUT") && windSpeed >= 8) { factor -= 0.03; notas.push("vientoOUT>=8mph:-0.03"); }
+  // Solo se registran las notas de lo que la heuristica hubiera hecho —
+  // NO se suma/resta nada al factor real (se fuerza a 1.0 abajo).
+  if (temp < 60) notas.push("frio<60F: heuristica sugeriria +0.03 (no aplicado, sin backtest)");
+  if (temp > 85) notas.push("calor>85F: heuristica sugeriria -0.03 (no aplicado, sin backtest)");
+  if (windDir.includes("IN") && windSpeed >= 8) notas.push("vientoIN>=8mph: heuristica sugeriria +0.03 (no aplicado, sin backtest)");
+  if (windDir.includes("OUT") && windSpeed >= 8) notas.push("vientoOUT>=8mph: heuristica sugeriria -0.03 (no aplicado, sin backtest)");
 
   return {
-    factor: factor, // sin redondear
-    factor_display: redondearParaMostrar(factor, 3),
+    factor: 1.0,
+    factor_display: 1.0,
     notas: notas,
-    status: "HEURISTICA_SIN_BACKTEST",
-    motivo: "Reglas basadas en logica del usuario, NO validadas con datos historicos todavia"
+    status: "NO_CONFIRMADO",
+    motivo: "HEURISTICA_SIN_BACKTEST — factor neutro (1.0) hasta que exista backtest aprobado; notas quedan solo como informacion"
   };
 }
 
@@ -337,11 +376,13 @@ function calcularK6(input) {
 //   K6=6.42, línea 7.5 → diferencia -1.08 → UNDER claro (lejos)
 // ============================================================
 function compararConLinea(k6Preciso, lineaBanca) {
-  if (k6Preciso === null || k6Preciso === undefined || lineaBanca === null || lineaBanca === undefined) {
+  if (!esNumeroReal(k6Preciso) || !esNumeroReal(lineaBanca)) {
     return { lectura: "NO_CONFIRMADO", diferencia: null, diferencia_display: null, texto: "Sin línea de mercado o sin K6 para comparar." };
   }
 
-  const diferencia = k6Preciso - lineaBanca; // SIN redondear, se usa completa para clasificar
+  const k6 = Number(k6Preciso);
+  const linea = Number(lineaBanca);
+  const diferencia = k6 - linea; // SIN redondear, se usa completa para clasificar
 
   let lectura, texto;
   if (diferencia >= 0.75) {
