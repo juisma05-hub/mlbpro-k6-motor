@@ -67,13 +67,131 @@
 <script src="motor-k6-nuevo.js"></script>
 
 <script>
+/* ============================================================
+   PRÓLOGO — k6-motor-nuevo.html (script inline)
+   ============================================================
+   QUÉ ES:
+     Pantalla "K6 · Motor Nuevo (DataPro)". Jala el schedule de hoy,
+     para cada juego calcula el K6 proyectado de ambos pitchers
+     probables (vía motor-k6-nuevo.js) usando sus últimos 5 starts, lo
+     compara contra la línea de mercado de ponches, y si el juego está
+     en vivo agrega una caja de proyección en tiempo real basada en el
+     boxscore.
+
+   ORDEN DE CARGA (no cambiar, cada uno depende del anterior):
+     1. mlb-routes.js           (MLB_ROUTES.WORKER_BASE — proxy)
+     2. arsenal-master.js       (ARSENAL_MASTER_2026 global)
+     3. umpires-master.js       (UMPIRES_MASTER_2026 global)
+     4. park-factors.js         (PARK_FACTORS_2026 global)
+     5. jalar-linea-ponches.js  (jalarLineasPonches, lineaPonchesBuscarPitcher)
+     6. jalar-ultimos5.js       (jalarUltimos5)
+     7. motor-k6-nuevo.js       (calcularK6, compararConLinea,
+                                 ipRealDesdeBeisbol, redondearParaMostrar)
+     8. este script inline
+
+   FUNCIONES GLOBALES USADAS (definidas en los scripts de arriba, NO
+   en este archivo — este archivo no las reimplementa):
+     MLB_ROUTES.WORKER_BASE, ARSENAL_MASTER_2026, UMPIRES_MASTER_2026,
+     PARK_FACTORS_2026, jalarLineasPonches(), lineaPonchesBuscarPitcher(),
+     jalarUltimos5(), calcularK6(), compararConLinea(),
+     ipRealDesdeBeisbol(), redondearParaMostrar().
+
+   CACHÉS / localStorage:
+     Este archivo NO lee ni escribe localStorage directamente. Todo el
+     estado vive en memoria de la corrida (variables locales del click
+     handler); si algún script cargado arriba usa caché propia
+     (ej. líneas de mercado), es responsabilidad de ESE script, no de
+     este HTML.
+
+   QUIÉN LO LLAMA:
+     Standalone — se abre directo como página (K6 Motor Nuevo), enlazada
+     desde k6-test.html ("← Volver a K6 · Ponches") y viceversa.
+
+   LÓGICA PREGAME (juego no está "Live"):
+     Se calcula K6 proyectado de cada pitcher probable con calcularK6()
+     usando sus últimos 5 starts, se compara contra la línea de mercado
+     si existe, y se muestra la tarjeta normal. NO se llama a
+     jalarEnVivoPitcher() ni aparece la caja "EN VIVO" — eso solo pasa
+     si g.status.abstractGameState === "Live".
+
+   LÓGICA EN VIVO (juego con abstractGameState === "Live"):
+     Para cada pitcher probable con id real, se pide el feed en vivo del
+     juego (jalarEnVivoPitcher, endpoint /feed/live) y se lee su IP/K
+     reales SI el objeto de ese jugador trae stats.pitching (dentro de
+     liveData.boxscore.teams). El estado de continuidad (sigue_en_juego)
+     se determina así:
+       1. Se identifica a qué equipo pertenece el pitcher consultado
+          (away/home), según el bloque boxTeams donde se encontró.
+       2. Se lee liveData.linescore.isTopInning y
+          liveData.linescore.defense.pitcher.id.
+       3. Se determina el equipo defensivo real: isTopInning===true →
+          defiende home; isTopInning===false → defiende away.
+       4. Solo si el equipo del pitcher consultado ES el equipo
+          defensivo se compara defense.pitcher.id contra pitcherId
+          (igual → true, distinto → false).
+       5. Si el equipo del pitcher está BATEANDO (no es el equipo
+          defensivo), sigue_en_juego queda null — nunca false — porque
+          en ese instante defense.pitcher.id pertenece al pitcher rival
+          y no dice nada sobre si el pitcher consultado sigue siendo el
+          titular de su equipo.
+       6. Si isTopInning no es boolean, o no hay defense.pitcher.id
+          numérico real, sigue_en_juego queda null (no se puede
+          determinar, no se inventa ni continuidad ni reemplazo).
+     proyeccionEnVivo() decide qué mostrar según sigue_en_juego Y según
+     si hay un ritmo K6 confirmado:
+       true + k6_proyectado_preciso real → proyecta K actuales + K
+               restante hasta el marco K6 (mismo ritmo K/IP de
+               calcularK6, IP restantes hasta 6.0). Caja
+               "🔴 PROYECCIÓN EN VIVO".
+       true + k6_proyectado_preciso null → sigue lanzando pero el motor
+               no tiene ritmo K6 confirmado (ej. sin starts calificados);
+               NO se inventa una proyección. Caja
+               "🟡 ACTIVO — SIN RITMO K6 CONFIRMADO", solo K/IP reales.
+       false → NO proyecta entradas futuras. Muestra el K real como
+               total final. Caja "✅ SALIDA CONFIRMADA".
+       null  → NO proyecta entradas futuras (no se inventa que sigue
+               lanzando). Muestra K/IP reales tal cual. Caja
+               "⏳ ESTADO NO CONFIRMADO".
+     En los cuatro casos el K real y las IP reales del feed se
+     conservan y se muestran — lo único que cambia es si se agrega o
+     no una proyección de entradas futuras.
+
+   QUÉ NO TOCA (fuera de alcance de esta corrección):
+     calcularK6() y su ponderación de capas (motor-k6-nuevo.js), el
+     cálculo/lectura de línea de mercado (jalar-linea-ponches.js), la
+     lógica de últimos 5 starts (jalar-ultimos5.js), el diseño/CSS, ni
+     la estructura de tarjetas (un juego = una tarjeta con los dos
+     pitchers adentro).
+
+   FECHA:
+     13 jul 2026.
+
+   ESTADO:
+     NO_CONFIRMADO — correcciones aplicadas por lectura de código y
+     probadas con fetch simulado en Node dentro de esta sesión (fecha
+     ET, pitcher activo con y sin ritmo K6 confirmado, pitcher
+     reemplazado vía defense.pitcher.id con equipo defensivo correcto,
+     pitcher de un equipo bateando → null en vez de false, estado no
+     confirmado, pregame sin caja en vivo). Pendiente de prueba real en
+     el navegador con un juego en vivo real de MLB Stats API, para
+     confirmar que liveData.linescore.isTopInning y
+     liveData.linescore.defense.pitcher.id existen y son fiables en el
+     feed real.
+   ============================================================ */
+
   var consoleEl = document.getElementById("console");
   var listaEl = document.getElementById("lista");
   function log(t){ var d=document.createElement("div"); d.textContent=t; consoleEl.appendChild(d); consoleEl.scrollTop=consoleEl.scrollHeight; }
 
+  // Fecha de HOY en America/New_York (maneja horario de verano solo,
+  // vía Intl.DateTimeFormat — no un offset fijo de horas que se
+  // desalinea en DST o según dónde esté físicamente el dispositivo).
+  // en-CA da directamente el formato YYYY-MM-DD.
   function hoyISO(){
-    var d=new Date(Date.now()-6*60*60*1000);
-    return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2);
+    var fmt = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit"
+    });
+    return fmt.format(new Date());
   }
 
   // ── UN pitcher, dentro de la tarjeta compartida del juego ──
@@ -83,13 +201,17 @@
   // ("PROYECCIÓN FINAL EN VIVO: K actuales + K proy · IP restantes"). ──
   async function jalarEnVivoPitcher(gamePk, pitcherId){
     try {
-      var url = "https://statsapi.mlb.com/api/v1/game/" + gamePk + "/boxscore";
+      var url = "https://statsapi.mlb.com/api/v1.1/game/" + gamePk + "/feed/live";
       var resp = await fetch(MLB_ROUTES.WORKER_BASE + encodeURIComponent(url));
       if (!resp.ok) return null;
       var data = await resp.json();
+      var boxTeams = (data.liveData && data.liveData.boxscore && data.liveData.boxscore.teams)
+        ? data.liveData.boxscore.teams : null;
+      if (!boxTeams) return null;
       var teams = ["away", "home"];
       for (var t = 0; t < teams.length; t++) {
-        var players = data.teams && data.teams[teams[t]] ? data.teams[teams[t]].players : null;
+        var equipoPitcher = teams[t]; // "away" u "home" — el bloque exacto donde se encontró
+        var players = boxTeams[equipoPitcher] ? boxTeams[equipoPitcher].players : null;
         if (!players) continue;
         var key = "ID" + pitcherId;
         if (players[key] && players[key].stats && players[key].stats.pitching) {
@@ -97,12 +219,50 @@
           var ipReal = ipRealDesdeBeisbol(st.inningsPitched);
           var kActuales = st.strikeOuts !== undefined ? Number(st.strikeOuts) : null;
           if (ipReal === null || kActuales === null) return null;
+
+          // Estado real de continuidad: liveData.linescore.defense.pitcher.id
+          // es el ID del pitcher en el montículo AHORA MISMO, pero eso solo
+          // es comparable contra pitcherId si el equipo de ESE pitcher es el
+          // que está a la defensiva en este instante. Si su equipo está
+          // bateando, defense.pitcher.id pertenece al pitcher RIVAL — no se
+          // puede usar esa comparación para decir "reemplazado".
+          //
+          // Equipo defensivo real, vía isTopInning:
+          //   isTopInning === true  → away batea, HOME defiende.
+          //   isTopInning === false → home batea, AWAY defiende.
+          //   no boolean            → no se puede determinar, todo queda null.
+          var linescore = (data.liveData && data.liveData.linescore) ? data.liveData.linescore : null;
+          var isTopInning = (linescore && typeof linescore.isTopInning === "boolean") ? linescore.isTopInning : null;
+          var pitcherActualId = (linescore && linescore.defense && linescore.defense.pitcher &&
+              typeof linescore.defense.pitcher.id !== "undefined")
+            ? Number(linescore.defense.pitcher.id)
+            : null;
+
+          var sigueEnJuego;
+          if (isTopInning === null || pitcherActualId === null || !Number.isFinite(pitcherActualId)) {
+            // Sin inning confirmado o sin ID de pitcher defensivo confiable:
+            // no se puede saber, no se inventa continuidad ni reemplazo.
+            sigueEnJuego = null;
+          } else {
+            var equipoDefensivo = isTopInning ? "home" : "away";
+            if (equipoDefensivo !== equipoPitcher) {
+              // El equipo de este pitcher está BATEANDO ahora mismo —
+              // defense.pitcher.id pertenece al rival, no es comparable.
+              // Nunca se marca como reemplazado en este caso.
+              sigueEnJuego = null;
+            } else {
+              // El equipo de este pitcher SÍ está a la defensiva: la
+              // comparación de ID es válida.
+              sigueEnJuego = (pitcherActualId === Number(pitcherId));
+            }
+          }
+
           return {
             en_juego: true,
             ip_actual: ipReal,
             ip_actual_texto: st.inningsPitched,
             k_actual: kActuales,
-            sigue_en_juego: !players[key].stats.pitching.hasOwnProperty("gameFinished") || true
+            sigue_en_juego: sigueEnJuego
           };
         }
       }
@@ -111,23 +271,63 @@
   }
 
   // Combina lo real (juego en curso) con la proyección del motor para lo
-  // que falta. Usa el mismo ritmo K/IP que ya calculó calcularK6 en base
-  // a los ultimos starts, aplicado solo a las entradas que faltan.
+  // que falta — SOLO si el pitcher confirmadamente sigue lanzando. Usa
+  // el mismo ritmo K/IP que ya calculó calcularK6 en base a los últimos
+  // starts, aplicado solo a las entradas que faltan.
+  //
+  // Reglas de sigue_en_juego (ver jalarEnVivoPitcher):
+  //   true  → si hay ritmo K6 confirmado (k6_proyectado_preciso !== null),
+  //           proyecta K actuales + K restante hasta el marco K6, estado
+  //           "EN_CURSO". Si NO hay ritmo K6 confirmado, no se inventa
+  //           una proyección: estado "PROYECCION_NO_CONFIRMADA", solo
+  //           K/IP reales.
+  //   false → YA NO proyecta entradas futuras. Total = K real, estado
+  //           "SALIDA_CONFIRMADA".
+  //   null  → no se pudo confirmar si sigue lanzando. NO se inventa
+  //           continuidad: no proyecta entradas futuras, estado
+  //           "NO_CONFIRMADO". Se sigue mostrando el K real y las IP
+  //           reales, que sí son datos confirmados por el boxscore.
   function proyeccionEnVivo(resultadoMotor, enVivo){
-    if (!enVivo || !enVivo.en_juego || resultadoMotor.k6_proyectado_preciso === null) return null;
-    var ritmoK6 = resultadoMotor.k6_proyectado_preciso; // K por cada 6 IP, ya con todos los factores
-    var ritmoPorIP = ritmoK6 / 6;
-    // IP restantes esperadas: hasta 6.0 IP (marco del K6), nunca negativo
-    var ipRestantes = Math.max(0, 6 - enVivo.ip_actual);
-    var kProyRestante = ritmoPorIP * ipRestantes;
-    var totalPreciso = enVivo.k_actual + kProyRestante;
-    return {
+    if (!enVivo || !enVivo.en_juego) return null;
+
+    var base = {
       k_actual: enVivo.k_actual,
-      ip_actual_texto: enVivo.ip_actual_texto,
-      k_proy_restante: redondearParaMostrar(kProyRestante, 1),
-      ip_restantes: redondearParaMostrar(ipRestantes, 1),
-      total_en_vivo: redondearParaMostrar(totalPreciso, 1)
+      ip_actual_texto: enVivo.ip_actual_texto
     };
+
+    if (enVivo.sigue_en_juego === true) {
+      if (resultadoMotor.k6_proyectado_preciso === null) {
+        // Sigue lanzando de verdad, pero el motor no tiene un ritmo K6
+        // confirmado para proyectar (por ejemplo, sin starts calificados
+        // recientes). No se inventa una proyección de entradas futuras:
+        // se muestran K/IP reales tal cual, con estado explícito.
+        base.estado = "PROYECCION_NO_CONFIRMADA";
+        base.total_en_vivo = enVivo.k_actual;
+        return base;
+      }
+      var ritmoK6 = resultadoMotor.k6_proyectado_preciso; // K por cada 6 IP, ya con todos los factores
+      var ritmoPorIP = ritmoK6 / 6;
+      // IP restantes esperadas: hasta 6.0 IP (marco del K6), nunca negativo
+      var ipRestantes = Math.max(0, 6 - enVivo.ip_actual);
+      var kProyRestante = ritmoPorIP * ipRestantes;
+      var totalPreciso = enVivo.k_actual + kProyRestante;
+      base.estado = "EN_CURSO";
+      base.k_proy_restante = redondearParaMostrar(kProyRestante, 1);
+      base.ip_restantes = redondearParaMostrar(ipRestantes, 1);
+      base.total_en_vivo = redondearParaMostrar(totalPreciso, 1);
+      return base;
+    }
+
+    if (enVivo.sigue_en_juego === false) {
+      base.estado = "SALIDA_CONFIRMADA";
+      base.total_en_vivo = enVivo.k_actual;
+      return base;
+    }
+
+    // enVivo.sigue_en_juego === null: no confirmado, no se inventa que
+    // sigue lanzando. Se devuelven los reales, sin proyección futura.
+    base.estado = "NO_CONFIRMADO";
+    return base;
   }
 
   function bloquePitcherHtml(equipoNombre, pitcherNombre, resultado, lineaMercado, enVivo){
@@ -147,15 +347,39 @@
     }
 
     // NUEVO: caja "EN VIVO" — solo aparece si el juego ya está en curso y
-    // se pudo leer el boxscore real de este pitcher.
+    // se pudo leer el boxscore real de este pitcher. El contenido exacto
+    // depende del estado real de continuidad (ver proyeccionEnVivo):
+    // proyecta entradas futuras SOLO si sigue confirmadamente lanzando.
     var enVivoHtml = '';
     var proyVivo = proyeccionEnVivo(resultado, enVivo);
     if (proyVivo) {
-      enVivoHtml = '<div class="envivo-box">'+
-        '<div class="envivo-titulo">🔴 PROYECCIÓN EN VIVO</div>'+
-        '<div class="envivo-total">'+proyVivo.total_en_vivo+'</div>'+
-        '<div class="envivo-detalle">'+proyVivo.k_actual+' K actuales + '+proyVivo.k_proy_restante+' proy · '+proyVivo.ip_restantes+' IP restantes ('+proyVivo.ip_actual_texto+' IP lanzadas)</div>'+
-      '</div>';
+      if (proyVivo.estado === "EN_CURSO") {
+        enVivoHtml = '<div class="envivo-box">'+
+          '<div class="envivo-titulo">🔴 PROYECCIÓN EN VIVO</div>'+
+          '<div class="envivo-total">'+proyVivo.total_en_vivo+'</div>'+
+          '<div class="envivo-detalle">'+proyVivo.k_actual+' K actuales + '+proyVivo.k_proy_restante+' proy · '+proyVivo.ip_restantes+' IP restantes ('+proyVivo.ip_actual_texto+' IP lanzadas)</div>'+
+        '</div>';
+      } else if (proyVivo.estado === "SALIDA_CONFIRMADA") {
+        enVivoHtml = '<div class="envivo-box">'+
+          '<div class="envivo-titulo">✅ SALIDA CONFIRMADA</div>'+
+          '<div class="envivo-total">'+proyVivo.total_en_vivo+'</div>'+
+          '<div class="envivo-detalle">'+proyVivo.k_actual+' K reales (final) · '+proyVivo.ip_actual_texto+' IP lanzadas — ya no está en el montículo, sin proyección de entradas futuras</div>'+
+        '</div>';
+      } else if (proyVivo.estado === "PROYECCION_NO_CONFIRMADA") {
+        enVivoHtml = '<div class="envivo-box">'+
+          '<div class="envivo-titulo">🟡 ACTIVO — SIN RITMO K6 CONFIRMADO</div>'+
+          '<div class="envivo-total">'+proyVivo.total_en_vivo+'</div>'+
+          '<div class="envivo-detalle">'+proyVivo.k_actual+' K reales hasta ahora · '+proyVivo.ip_actual_texto+' IP lanzadas — sigue en el montículo, pero el motor no tiene un ritmo K6 confirmado para proyectar entradas futuras</div>'+
+        '</div>';
+      } else {
+        // NO_CONFIRMADO: no se inventa continuidad; se muestran solo los
+        // reales confirmados por el boxscore, sin proyectar entradas.
+        enVivoHtml = '<div class="envivo-box">'+
+          '<div class="envivo-titulo">⏳ ESTADO NO CONFIRMADO</div>'+
+          '<div class="envivo-total">'+proyVivo.k_actual+'</div>'+
+          '<div class="envivo-detalle">'+proyVivo.k_actual+' K reales hasta ahora · '+proyVivo.ip_actual_texto+' IP lanzadas — no se pudo confirmar si sigue en el montículo, sin proyección de entradas futuras</div>'+
+        '</div>';
+      }
     }
 
     var lineas = '<div class="lineas">'+
@@ -220,6 +444,11 @@
 
       log("Trayendo juegos de hoy...");
       var hoy = hoyISO();
+      // Año MLB derivado de la MISMA fecha ET que usa el schedule — no
+      // new Date().getFullYear() por separado, que podía desalinearse
+      // del año real de MLB cerca de fin/inicio de año o por zona
+      // horaria del dispositivo.
+      var anioMLB = Number(hoy.slice(0, 4));
       var mlbUrl = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date="+hoy+"&hydrate=probablePitcher";
       var resp = await fetch(MLB_ROUTES.WORKER_BASE + encodeURIComponent(mlbUrl));
       if (!resp.ok) throw new Error("Schedule HTTP " + resp.status);
@@ -260,7 +489,7 @@
         } else {
           try {
             log("Procesando " + pAwayName + "...");
-            var u5Away = await jalarUltimos5(pAwayId, new Date().getFullYear());
+            var u5Away = await jalarUltimos5(pAwayId, anioMLB);
             var resultadoAway = calcularK6({
               playerId: pAwayId,
               juegosRecientes: u5Away.juegos || [],
@@ -292,7 +521,7 @@
         } else {
           try {
             log("Procesando " + pHomeName + "...");
-            var u5Home = await jalarUltimos5(pHomeId, new Date().getFullYear());
+            var u5Home = await jalarUltimos5(pHomeId, anioMLB);
             var resultadoHome = calcularK6({
               playerId: pHomeId,
               juegosRecientes: u5Home.juegos || [],
